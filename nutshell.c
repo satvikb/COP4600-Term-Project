@@ -13,22 +13,22 @@ int main()
     aliasIndex = 0;
     varIndex = 0;
     char cwd[PATH_MAX];
-    getcwd(cwd, sizeof(cwd));
+    getcwd(cwd, sizeof(cwd)); // put the current working directory into cwd
 
-    strcpy(varTable.var[varIndex], "PWD");
+    strcpy(varTable.var[varIndex], "PWD"); // varIndex = 0
     strcpy(varTable.word[varIndex], cwd);
     varIndex++;
-    strcpy(varTable.var[varIndex], "HOME");
+    strcpy(varTable.var[varIndex], "HOME"); // varIndex = 1
     strcpy(varTable.word[varIndex], cwd);
     varIndex++;
-    strcpy(varTable.var[varIndex], "PROMPT");
-    strcpy(varTable.word[varIndex], "nutshell");
+    strcpy(varTable.var[varIndex], "PROMPT"); // varIndex = 2
+    strcpy(varTable.word[varIndex], "nutshell-sb");
     varIndex++;
-    strcpy(varTable.var[varIndex], "PATH");
+    strcpy(varTable.var[varIndex], "PATH"); // varIndex = 3
     strcpy(varTable.word[varIndex], ".:/bin");
     varIndex++;
 
-    strcpy(aliasTable.name[aliasIndex], ".");
+    strcpy(aliasTable.name[aliasIndex], "."); // aliasIndex = 0
     strcpy(aliasTable.word[aliasIndex], cwd);
     aliasIndex++;
 
@@ -37,7 +37,7 @@ int main()
         *pointer ='\0';
         pointer++;
     }
-    strcpy(aliasTable.name[aliasIndex], "..");
+    strcpy(aliasTable.name[aliasIndex], "..");  // aliasIndex = 1
     strcpy(aliasTable.word[aliasIndex], cwd);
     aliasIndex++;
 

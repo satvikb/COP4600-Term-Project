@@ -1,7 +1,7 @@
 %{
 // This is ONLY a demo micro-shell whose purpose is to illustrate the need for and how to handle nested alias substitutions and how to use Flex start conditions
 // This is to help students learn these specific capabilities, the code is by far not a complete nutshell by any means.
-// Only "alias name word", "cd word", and "bye" run. 
+// Only "alias name word", "cd word", and "bye" run.
 #include "nutshparser.tab.h"
 #include <string.h>
 #include "global.h"
@@ -41,6 +41,7 @@ ANYCHAR            [)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~ -][)(*&%$#@!`;,\.a-zA-Z0-9'/*_
 bye                 { return BYE; }
 cd		            { return CD;}
 alias		        { return ALIAS; }
+setenv		        { return SETENV; }
 "\n"		        { return END; }
 [\"]                 { BEGIN(string_condition); }
 {CHAR}+              {if(ifAlias(yytext)) {
