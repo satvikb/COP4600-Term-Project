@@ -23,7 +23,7 @@ int yyerror(char *s);
 int runCD(char* arg);
 int runSetAlias(char *name, char *word);
 int runSetEnv(char *variable, char *word);
-int runOtherCommand(char* cmd);
+int runCommand(struct commandpipe entry);
 %}
 
 %union {char *string;}
@@ -163,38 +163,91 @@ int runCommandTable(struct command commandTable[]){
 		loop:
 			setup input output between commands in command table
 			^ i/o should only ever be from previous or next command
-			
-		
+
+			Create commandpipe struct:
+				test if input file exists:
+					yes: pipe to it
+					no: pipe to standard input
+				// TODO also deal with 2>&1 (maybe this should be dealt with outside the loop at the end)
+				test if output file exists: 
+					yes: output pipe to it
+					no: &1
+			runCommand(commandpipe)
 	*/
+
+	struct command *ptr = commandTable;
+	for(int i = 0; i < 32/*lenCommandTable*/; i++, ptr++){
+		struct commandpipe cmdPipe;
+
+		strcpy(cmdPipe.commandName, ptr->commandName);
+		cmdPipe.numberArguments = ptr->numberArguments;
+		strcpy(cmdPipe.args, ptr->args);
+
+		pipe(cmdPipe.inputPipe);
+		
+		// assign the input to the child
+		// if there is an input file, we read from it and write into pipe
+
+		if(ptr->inputFileName[0] != '\0'){
+			// input file name is not empty
+			// so we write into the write end (input) of the pipe for the child?
+
+			// TODO change this to be input file data
+			// https://man7.org/linux/man-pages/man3/dprintf.3p.html // https://linux.die.net/man/3/dprintf
+			// write to input side of pipe for the child
+			dprintf(cmdPipe.inputPipe[1], "This should be the file input\n"); 
+		}else{
+			// no input file. so this needs to be either no input or 
+			// TODO: piped data from another command
+		}
+
+		// finishing writing data for child
+		close(cmdPipe.inputPipe[1]);
+
+		// it should be ok if we runCommand after closing pipe right? data should still exist in pipe?
+		runCommand(cmdPipe);
+
+
+
+
+
+
+
+	}
+
 
 	// reset commandTable here
 }
 
 // recursive call, maybe need to pass in other fds from the runCommandTable function?
-int runCommand(struct command entry){
+//http://www.rozmichelle.com/pipes-forks-dups/
+int runCommand(struct commandpipe entry){
 	char *cmdName = entry.commandName;
 	int argCount = entry.numberArguments;
 	char *args = entry.args;
-	char *inputFile = entry.inputFileName;
-	char *outputFile = entry.outputFileName;
+	int *inputPipe = entry.inputPipe;
+	int *outputPipe = entry.outputPipe;
 
 	/*
 		https://man7.org/linux/man-pages/man2/pipe.2.html
 
-		fds[0] - READ END
-		fds[1] - WRITE END
+		inputPipe[0] - READ END
+		inputPipe[1] - WRITE END
 	*/
-	// create file descriptor array
-	// THIS ARRAY WILL ONLY DEAL WITH THE INPUT AND OUTPUT FILES, LEAVE IT HERE
-	int fds[2];
-	pipe(fds);
+
+	// maybe change the output here?
+	// maybe dup2 with outputpipe and stdout?
+
 
 	// create child process
+	// REMEMBER CHILD HAS EVERYTHING COPIED AT THIS POINT (INCLUDING STDIN AND STDOUT)
+	// TODO TEST IF THE INPUTPIPE AND OUTPUT PIPE ALSO COPIES OVER OR IF JUST POINTERS.
+	// NEED TO MAKE SURE IT COPIES AND ARE NOT JUST POINTERS... or do pointers even matter?
 	pid_t pid = fork();
 	if(pid == 0){
 		// child
 		/*
-			so at this point, we have to make fds[0] the input to the 
+			so at this point, we have to make inputPipe[0] the input to the 
 			process we are about to execute?
 
 			REMEMBER EVERYTHING IN THIS IF STATEMENT IS IN THE CONTEXT OF THE CHILD
@@ -204,13 +257,13 @@ int runCommand(struct command entry){
 
 		// read end of pipe will assigned be standard input of child? yes, the write end will be from parent
 		// https://man7.org/linux/man-pages/man2/dup2.2.html
-		dup2(fds[0], STDIN_FILENO);
+		dup2(inputPipe[0], STDIN_FILENO);
 
-		// so at this point fds[0] is not needed since the readable end of the pipe
+		// so at this point inputPipe[0] is not needed since the readable end of the pipe
 		// is associated with either stdin or the file(?)
-		close(fds[0]);
+		close(inputPipe[0]);
 		// close the write end of the pipe in child
-		close(fds[1]);
+		close(inputPipe[1]);
 
 		// run the command using execv (an array of args)
 
@@ -228,26 +281,8 @@ int runCommand(struct command entry){
 	// parent only section
 
 	// read end of pipe not used in parent
-	close(fds[0]);
+	close(inputPipe[0]);
 
-	// assign the input to the child
-	// if there is an input file, we read from it and write into pipe
-
-	if(inputFile[0] != '\0'){
-		// input file name is not empty
-		// so we write into the write end (input) of the pipe for the child?
-
-		// TODO change this to be input file data
-		// https://man7.org/linux/man-pages/man3/dprintf.3p.html // https://linux.die.net/man/3/dprintf
-		// write to input side of pipe for the child
-		dprintf(fds[1], "This should be the file input\n"); 
-	}else{
-		// no input file. so this needs to be either no input or 
-		// TODO: piped data from another command
-	}
-
-	// finishing writing data for child
-	close(fds[1]);
 
 	// wait for child to exit.
 	// TODO handle the & and background processing. do that here (at the command level, race conditions between commands?)? or at the table level?

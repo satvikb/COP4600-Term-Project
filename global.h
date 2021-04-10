@@ -16,9 +16,18 @@ struct command {
    char *outputFileName;
 };
 
+struct commandpipe {
+	char *commandName;
+   int numberArguments;
+   char *args; // TODO, this should be a pointer to a list of strings/char[] (or one string) with each arg being null terminated
+	int inputPipe[2];
+   int outputPipe[2];
+};
 
 struct evTable varTable;
 struct aTable aliasTable;
+
+// int lenCommandTable = 32;
 struct command commandTable[32];
 
 int aliasIndex, varIndex;
