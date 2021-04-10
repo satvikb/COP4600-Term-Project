@@ -8,9 +8,18 @@ struct aTable {
 	char name[128][100];
 	char word[128][100];
 };
+struct command {
+	char *commandName;
+   int numberArguments;
+   char *args; // TODO, this should be a pointer to a list of strings/char[] (or one string) with each arg being null terminated
+	char *inputFileName;
+   char *outputFileName;
+};
+
 
 struct evTable varTable;
 struct aTable aliasTable;
+struct command commandTable[32];
 
 int aliasIndex, varIndex;
 char* subAliases(char* name);

@@ -1,6 +1,7 @@
 CC=/usr/bin/cc
+GPP=/usr/bin/g++
 
-all:  bison-config flex-config nutshell
+all:  bison-config flex-config nutshellC
 
 bison-config:
 	bison -d nutshparser.y
@@ -9,6 +10,9 @@ flex-config:
 	flex nutshscanner.l
 
 nutshell: 
+	$(GPP) nutshell.c nutshparser.tab.c lex.yy.c -o nutshell
+
+nutshellC: 
 	$(CC) nutshell.c nutshparser.tab.c lex.yy.c -o nutshell
 
 clean:

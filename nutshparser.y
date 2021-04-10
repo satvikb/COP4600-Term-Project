@@ -15,13 +15,15 @@ chdir (path) - change working directory
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <sys/wait.h>
 #include "global.h"
 
-int yylex();
+int yylex(); 
 int yyerror(char *s);
 int runCD(char* arg);
 int runSetAlias(char *name, char *word);
 int runSetEnv(char *variable, char *word);
+int runOtherCommand(char* cmd);
 %}
 
 %union {char *string;}
@@ -33,7 +35,7 @@ int runSetEnv(char *variable, char *word);
 cmd_line    :
 	BYE END 		                {exit(1); return 1; }
 	| CD STRING END        			{runCD($2); return 1;}
-	| SETENV STRING STRING END	{runSetEnv($2, $3); return 1;}
+	| SETENV STRING STRING END		{runSetEnv($2, $3); return 1;}
 	| ALIAS STRING STRING END		{runSetAlias($2, $3); return 1;}
 %%
 
@@ -138,4 +140,118 @@ int runSetEnv(char *variable, char *word){
 	strcpy(varTable.word[varIndex], word);
 	varIndex++;
 
+}
+
+// ASSUMPTION: a command can only do one of either Output to file or Redirect into pipe, Not both.
+// ^ so a command must end with | or > (if not using &1)
+
+// ASSUMPTION: any command/multiple commands can have input files with <.
+// ^ the spec however, only shows one < at the end of the line?
+int runCommandTable(struct command commandTable[]){
+	// loop through command table
+	/*
+	example:
+			sort < colors.txt | uniq -c | sort -r | head -3 > favcolors.txt
+
+			commandTable[0] = {CMD: sort, # arg: 0, args: nullptr, inputFileName: colors.txt, outputFile: null}
+			commandTable[1] = {CMD: uniq, # arg: 1, args: [-c](?), input: null, output: null}
+			commandTable[2] = {CMD: sort, # arg: 1, args: [-r](?), input: null, output: null}
+			commandTable[3] = {CMD: head, # arg: 1, args: [-3](?), input: null, outputFileName: favcolors.txt}
+
+	*/
+	/*
+		loop:
+			setup input output between commands in command table
+			^ i/o should only ever be from previous or next command
+			
+		
+	*/
+
+	// reset commandTable here
+}
+
+// recursive call, maybe need to pass in other fds from the runCommandTable function?
+int runCommand(struct command entry){
+	char *cmdName = entry.commandName;
+	int argCount = entry.numberArguments;
+	char *args = entry.args;
+	char *inputFile = entry.inputFileName;
+	char *outputFile = entry.outputFileName;
+
+	/*
+		https://man7.org/linux/man-pages/man2/pipe.2.html
+
+		fds[0] - READ END
+		fds[1] - WRITE END
+	*/
+	// create file descriptor array
+	// THIS ARRAY WILL ONLY DEAL WITH THE INPUT AND OUTPUT FILES, LEAVE IT HERE
+	int fds[2];
+	pipe(fds);
+
+	// create child process
+	pid_t pid = fork();
+	if(pid == 0){
+		// child
+		/*
+			so at this point, we have to make fds[0] the input to the 
+			process we are about to execute?
+
+			REMEMBER EVERYTHING IN THIS IF STATEMENT IS IN THE CONTEXT OF THE CHILD
+			THE READ END OF THE PIPE IS INPUT IN TERMS OF CHILD
+		*/
+		
+
+		// read end of pipe will assigned be standard input of child? yes, the write end will be from parent
+		// https://man7.org/linux/man-pages/man2/dup2.2.html
+		dup2(fds[0], STDIN_FILENO);
+
+		// so at this point fds[0] is not needed since the readable end of the pipe
+		// is associated with either stdin or the file(?)
+		close(fds[0]);
+		// close the write end of the pipe in child
+		close(fds[1]);
+
+		// run the command using execv (an array of args)
+
+		// TODO use number of arguments and args string to create char *const argv[] for execv
+		// build exec arg array
+		// TODO with arguments
+		char *argv[] = {cmdName, NULL};
+		// https://man7.org/linux/man-pages/man3/exec.3.html
+		// execv only returns on an error, and if there is an error, exit the child
+		if (execv(argv[0], argv) < 0){
+			exit(0);
+		}
+	}
+
+	// parent only section
+
+	// read end of pipe not used in parent
+	close(fds[0]);
+
+	// assign the input to the child
+	// if there is an input file, we read from it and write into pipe
+
+	if(inputFile[0] != '\0'){
+		// input file name is not empty
+		// so we write into the write end (input) of the pipe for the child?
+
+		// TODO change this to be input file data
+		// https://man7.org/linux/man-pages/man3/dprintf.3p.html // https://linux.die.net/man/3/dprintf
+		// write to input side of pipe for the child
+		dprintf(fds[1], "This should be the file input\n"); 
+	}else{
+		// no input file. so this needs to be either no input or 
+		// TODO: piped data from another command
+	}
+
+	// finishing writing data for child
+	close(fds[1]);
+
+	// wait for child to exit.
+	// TODO handle the & and background processing. do that here (at the command level, race conditions between commands?)? or at the table level?
+	int status;
+  	pid_t wpid = waitpid(pid, &status, 0); 
+	return 0;
 }
