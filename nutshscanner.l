@@ -5,7 +5,6 @@
 #include "nutshparser.tab.h"
 #include <string.h>
 #include "global.h"
-#include <stdbool.h>
 
 //#define unput(c) {yytchar= (c); if(yytchar=='\n') {yylineno--; *yysptr++=yytchar;}
 char* subAliases(char* name){
@@ -40,12 +39,13 @@ ANYCHAR            [)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~ -][)(*&%$#@!`;,\.a-zA-Z0-9'/*_
 <string_condition>{ANYCHAR}+     { yylval.string = strdup(yytext); return STRING;}
 <string_condition>[\"]          {BEGIN(INITIAL);}
 
-[ \t\r\n]		            { }
+[ \t\r]		            { }
 bye                 { return BYE; }
 cd		            { return CD;}
 alias		        { return ALIAS; }
 unalias             { return UNALIAS; }
 setenv		        { return SETENV; }
+ec                  { return EC; }
 unsetenv            { return UNSETENV; }
 printenv            { return PRINTENV; }
 "\n"		        { return END; }

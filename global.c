@@ -4,6 +4,7 @@ using namespace std;
 
 struct evTable varTable;
 struct aTable aliasTable;
+// TODO maybe use list?
 struct vector<command> commandTable;//[32];
 int aliasIndex, varIndex;
 // std::vector<int> weCanUseCPP;

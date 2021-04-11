@@ -27,12 +27,15 @@ int runSetAlias(char *name, char *word);
 
 int runSetEnv(char *variable, char *word);
 int runCommand(struct commandpipe entry, int inputPipe[], int outputPipe[]);
+int runCommandTable(struct vector<command> commandTable);
+
+void runExampleCommand();
 %}
 
 %union {char *string;}
 
 %start cmd_line
-%token <string> BYE CD STRING ALIAS UNALIAS SETENV UNSETENV PRINTENV END
+%token <string> BYE CD STRING ALIAS UNALIAS SETENV UNSETENV PRINTENV EC END
 
 %%
 cmd_line    :
@@ -40,6 +43,7 @@ cmd_line    :
 	| CD STRING END        			{runCD($2); return 1;}
 	| SETENV STRING STRING END		{runSetEnv($2, $3); return 1;}
 	| ALIAS STRING STRING END		{runSetAlias($2, $3); return 1;}
+	| EC END					{runExampleCommand(); return 1;}
 %%
 
 int yyerror(char *s) {
@@ -176,12 +180,28 @@ int runSetEnv(char *variable, char *word){
 	return 1;
 }
 
+void runExampleCommand(){
+	command start = { .commandName = "/bin/ls"};
+	command cat = { .commandName = "/bin/cat"};
+	command grep = { .commandName = "/bin/grep"};
+	vector<string> grepArgs; grepArgs.push_back("shell");
+	grep.args = grepArgs;
+
+	commandTable.push_back(start);
+	// commandTable.push_back(cat);
+	commandTable.push_back(grep);
+
+
+	printf("RUNNING COMMAND TABLE\n");
+	runCommandTable(commandTable);
+}
+
 // ASSUMPTION: a command can only do one of either Output to file or Redirect into pipe, Not both.
 // ^ so a command must end with | or > (if not using &1)
 
 // ASSUMPTION: any command/multiple commands can have input files with <.
 // ^ the spec however, only shows one < at the end of the line?
-int runCommandTable(struct command commandTable[]){
+int runCommandTable(struct vector<command> commandTable){
 	// loop through command table
 	/*
 	example:
@@ -194,10 +214,6 @@ int runCommandTable(struct command commandTable[]){
 
 	*/
 
-	// https://stackoverflow.com/questions/18914960/how-to-iterate-over-of-an-array-of-structures/18914961
-	struct command *ptr = commandTable;
-
-	// maybe use a pipe system outside the loop to facilitate data transfer?
 	/*
 		OUTPUT OF CURRENT COMMAND:
 		curOut[0] - read end of current command output (current command -> next command), 
@@ -227,13 +243,16 @@ int runCommandTable(struct command commandTable[]){
 
 	int validCommandCount = 0;
 
-	for(int i = 0; i < 32 - 1/*lenCommandTable*/; i++, ptr++){
-		if(ptr->commandName[0] != '\0'){
+	vector<command>::iterator it = commandTable.begin();
+	int i = 0;
+	for(it = commandTable.begin(); it != commandTable.end(); it++,i++){
+		command cmd = commandTable[i];
+		if(cmd.commandName[0] != '\0'){
+			// create new command pipe
 			struct commandpipe cmdPipe;
 			
-			strcpy(cmdPipe.commandName, ptr->commandName);
-			cmdPipe.numberArguments = ptr->numberArguments;
-			strcpy(cmdPipe.args, ptr->args);
+			cmdPipe.commandName = cmd.commandName;
+			cmdPipe.args = cmd.args;
 
 			// ASSIGN INPUT TO COMMAND
 			// 1 - assign output (read end) of tmp into input write end. (data written to tmp[1] is from previous command or stdin)
@@ -252,20 +271,28 @@ int runCommandTable(struct command commandTable[]){
 
 			// implementation of above:
 			dup2(tmp[0], curIn[1]); // 1
-			if(ptr->inputFileName[0] != '\0'){ // 2 - check if input file is not null
+			if(cmd.inputFileName[0] != '\0'){ // 2 - check if input file is not null
 				// open file, write data to pipe. maybe wait to write until command starts running
 				// to prevent buffer limit / deadlock?
 
 			}
 
-			// assuming ptr++ is equivalent to ptr = ptr + 1, then get next element in table
-			if((ptr+1)->commandName[0] != '\0'){
-				dup2(curOut[0], tmp[1]);
+			if(i < commandTable.size()-1){
+				if(commandTable[i+1].commandName[0] != '\0'){
+					std::cout << "PRE dup2 out0 to tmp1 " << curOut[0] << "," << curOut[1] << endl;
+					dup2(curOut[0], tmp[1]);
+					std::cout << "dup2 out0 to tmp1 " << curOut[0] << "," << curOut[1] << endl;
+				}
 			}
-
+			
+			std::cout << "PIPE STATE. IN: " << curIn[0] << "/" << curIn[1] << ". OUT: " << curOut[0] << "/" << curOut[1] << ". TMP: " << tmp[0] << "/" << tmp[1] << endl;
+			std::cout << "Running command " << cmdPipe.commandName << endl;
+			// printf("Running command %s",)
 			// run before close to prevent deadlock
 			runCommand(cmdPipe, curIn, curOut);
 
+
+			std::cout << "Closing parent pipes" << endl;
 
 			close(curIn[0]);
 			close(curIn[1]);
@@ -277,8 +304,10 @@ int runCommandTable(struct command commandTable[]){
 			// found a command that is null, we are done with command table
 			break;
 		}
+		
 	}
 
+	std::cout << "Waiting for all commands to finish " << validCommandCount << endl;
 	// TODO handle the & and background processing. do that here (at the command level, race conditions between commands?)? or at the table level?
 	int status;
 	for (int i = 0; i < validCommandCount; i++)
@@ -293,9 +322,8 @@ int runCommandTable(struct command commandTable[]){
 // function assumes inputPipe and outputPipe are already created
 // inputPipe and outputPipe are NOT NULL, they will either be pipe fd or 0,1,2
 int runCommand(struct commandpipe entry, int inputPipe[], int outputPipe[]){
-	char *cmdName = entry.commandName;
-	int argCount = entry.numberArguments;
-	char *args = entry.args;
+	string cmdName = entry.commandName;
+	vector<string> args = entry.args;
 	// int *inputPipe = entry.inputPipe;
 	// int *outputPipe = entry.outputPipe;
 
@@ -303,10 +331,12 @@ int runCommand(struct commandpipe entry, int inputPipe[], int outputPipe[]){
 	if(pid == 0){
 		// child
 
+		std::cout << "CHILD PIPE STATE. IN: " << inputPipe[0] << "/" << inputPipe[1] << ". OUT: " << outputPipe[0] << "/" << outputPipe[1] << "..." << STDIN_FILENO << endl;
 		// assign the input of the new exec to be the read from the read end of the input pipe
 		dup2(inputPipe[0], STDIN_FILENO);
 		// assign the output of the new exec to be written to the write end of the output pipe
 		dup2(outputPipe[1], STDOUT_FILENO);
+		std::cout << "CHILD PIPE STATE2. IN: " << inputPipe[0] << "/" << inputPipe[1] << ". OUT: " << outputPipe[0] << "/" << outputPipe[1] << "..." << STDIN_FILENO << endl;
 
 		close(inputPipe[0]);
 		close(inputPipe[1]);
@@ -318,10 +348,24 @@ int runCommand(struct commandpipe entry, int inputPipe[], int outputPipe[]){
 		// TODO use number of arguments and args string to create char *const argv[] for execv
 		// build exec arg array
 		// TODO with arguments
-		char *argv[] = {cmdName, NULL};
+
+		char cmdNameC[cmdName.length()+1];
+		strcpy(cmdNameC, cmdName.c_str());
+
+		// create array of args
+		//https://stackoverflow.com/questions/5797837/how-to-pass-a-vector-of-strings-to-execv
+		const char **argv = new const char* [args.size()+2];
+		argv[0] = cmdNameC;
+
+		for(int i = 0; i < args.size(); i++){
+			argv[i+1] = args[i].c_str();
+		}
+		argv[args.size()+1] = NULL;
+
 		// https://man7.org/linux/man-pages/man3/exec.3.html
 		// execv only returns on an error, and if there is an error, exit the child
-		if (execv(argv[0], argv) < 0){
+		if (execv(argv[0], (char **)argv) < 0){
+			cout << "ERROR" << errno << endl;
 			exit(0);
 		}
 	}

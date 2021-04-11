@@ -1,4 +1,7 @@
 #include <vector>
+#include <string>
+#include <iostream>
+#include <errno.h>
 using namespace std;
 
 struct evTable {
@@ -10,17 +13,15 @@ struct aTable {
 	char word[128][100];
 };
 struct command {
-	char *commandName;
-   int numberArguments;
-   char *args; // TODO, this should be a pointer to a list of strings/char[] (or one string) with each arg being null terminated
-	char *inputFileName;
-   char *outputFileName;
+	string commandName;
+   vector<string> args; // TODO, this should be a pointer to a list of strings/char[] (or one string) with each arg being null terminated
+	string inputFileName;
+   string outputFileName;
 };
 
 struct commandpipe {
-	char *commandName;
-   int numberArguments;
-   char *args; // TODO, this should be a pointer to a list of strings/char[] (or one string) with each arg being null terminated
+	string commandName;
+   vector<string> args; // TODO, this should be a pointer to a list of strings/char[] (or one string) with each arg being null terminated
 	// int inputPipe[2];
    // int outputPipe[2];
 };
