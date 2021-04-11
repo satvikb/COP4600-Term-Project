@@ -29,7 +29,7 @@ int runCommand(struct commandpipe entry);
 %union {char *string;}
 
 %start cmd_line
-%token <string> BYE CD STRING ALIAS SETENV END
+%token <string> BYE CD STRING ALIAS UNALIAS SETENV UNSETENV PRINTENV END
 
 %%
 cmd_line    :
