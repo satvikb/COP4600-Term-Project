@@ -6,6 +6,8 @@
 #include "global.h"
 #include <unistd.h>
 #include <limits.h>
+extern int yyparse (void);
+
 char *getcwd(char *buf, size_t size);
 
 int main()
@@ -25,7 +27,7 @@ int main()
     strcpy(varTable.word[varIndex], "nutshell-sb");
     varIndex++;
     strcpy(varTable.var[varIndex], "PATH"); // varIndex = 3
-    strcpy(varTable.word[varIndex], ".:/bin");
+    strcpy(varTable.word[varIndex], ".:/usr/bin");
     varIndex++;
 
     strcpy(aliasTable.name[aliasIndex], "."); // aliasIndex = 0
