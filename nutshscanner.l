@@ -24,6 +24,9 @@ bool ifAlias(char* name){
     }
     return false;
 }
+bool ifCmd(char* name){
+    
+}
 %}
 %array
 %option noyywrap
@@ -37,11 +40,14 @@ ANYCHAR            [)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~ -][)(*&%$#@!`;,\.a-zA-Z0-9'/*_
 <string_condition>{ANYCHAR}+     { yylval.string = strdup(yytext); return STRING;}
 <string_condition>[\"]          {BEGIN(INITIAL);}
 
-[ ]		            { }
+[ \t\r\n]		            { }
 bye                 { return BYE; }
 cd		            { return CD;}
 alias		        { return ALIAS; }
+unalias             { return UNALIAS; }
 setenv		        { return SETENV; }
+unsetenv            { return UNSETENV; }
+printenv            { return PRINTENV; }
 "\n"		        { return END; }
 [\"]                { BEGIN(string_condition); }
 {CHAR}+             {if(ifAlias(yytext)) {

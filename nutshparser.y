@@ -32,7 +32,7 @@ int runCommand(struct commandpipe entry, int inputPipe[], int outputPipe[]);
 %union {char *string;}
 
 %start cmd_line
-%token <string> BYE CD STRING ALIAS SETENV END
+%token <string> BYE CD STRING ALIAS UNALIAS SETENV UNSETENV PRINTENV END
 
 %%
 cmd_line    :
