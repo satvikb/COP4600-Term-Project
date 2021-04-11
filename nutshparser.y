@@ -224,6 +224,7 @@ int runCommandTable(struct vector<command> commandTable){
 		curIn[1] - write end, input (current command -> next command)
 	*/
 
+	// TODO probably not enough pipes, go back to old system of each command having input/output pipes...?
 	int curIn[2];
 	int curOut[2];
 	int tmp[2];
@@ -235,7 +236,7 @@ int runCommandTable(struct vector<command> commandTable){
 
 	// defaults
 	// assign standard input into write end of input pipe to command
-	// dup2(STDIN_FILENO, curIn[1]); // redundant when using tmp
+	dup2(STDIN_FILENO, curIn[1]); // redundant when using tmp
 	// assign standard output into write end of output pipe from command
 	dup2(STDOUT_FILENO, curOut[1]);
 
@@ -270,6 +271,8 @@ int runCommandTable(struct vector<command> commandTable){
 
 
 			// implementation of above:
+
+			// replace input write end with read end from tmp (program input becomes tmp[0])
 			dup2(tmp[0], curIn[1]); // 1
 			if(cmd.inputFileName[0] != '\0'){ // 2 - check if input file is not null
 				// open file, write data to pipe. maybe wait to write until command starts running
@@ -280,6 +283,7 @@ int runCommandTable(struct vector<command> commandTable){
 			if(i < commandTable.size()-1){
 				if(commandTable[i+1].commandName[0] != '\0'){
 					std::cout << "PRE dup2 out0 to tmp1 " << curOut[0] << "," << curOut[1] << endl;
+					// replace tmp write end with output read (output is written as input to tmp)
 					dup2(curOut[0], tmp[1]);
 					std::cout << "dup2 out0 to tmp1 " << curOut[0] << "," << curOut[1] << endl;
 				}
@@ -292,20 +296,23 @@ int runCommandTable(struct vector<command> commandTable){
 			runCommand(cmdPipe, curIn, curOut);
 
 
-			std::cout << "Closing parent pipes" << endl;
 
-			close(curIn[0]);
-			close(curIn[1]);
-			close(curOut[0]);
-			close(curOut[1]);
-
+			
 			validCommandCount += 1;
 		}else{
 			// found a command that is null, we are done with command table
 			break;
 		}
-		
 	}
+
+	std::cout << "Closing parent pipes" << endl;
+	close(curIn[0]);
+	close(curIn[1]);
+	close(curOut[0]);
+	close(curOut[1]);
+	close(tmp[0]);
+	close(tmp[1]);
+			
 
 	std::cout << "Waiting for all commands to finish " << validCommandCount << endl;
 	// TODO handle the & and background processing. do that here (at the command level, race conditions between commands?)? or at the table level?
