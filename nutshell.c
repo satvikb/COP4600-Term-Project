@@ -6,6 +6,8 @@
 #include "global.h"
 #include <unistd.h>
 #include <limits.h>
+extern int yyparse (void);
+
 char *getcwd(char *buf, size_t size);
 
 int main()

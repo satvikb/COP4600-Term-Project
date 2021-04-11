@@ -23,12 +23,11 @@ struct commandpipe {
 	// int inputPipe[2];
    // int outputPipe[2];
 };
-
-struct evTable varTable;
-struct aTable aliasTable;
-
-// int lenCommandTable = 32;
-struct command commandTable[32];
-
-int aliasIndex, varIndex;
 char* subAliases(char* name);
+
+extern struct evTable varTable;
+extern struct evTable varTable;
+extern struct aTable aliasTable;
+extern struct command commandTable[32];
+extern int aliasIndex;
+extern int varIndex;

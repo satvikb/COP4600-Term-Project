@@ -10,7 +10,7 @@ flex-config:
 	flex nutshscanner.l
 
 nutshell: 
-	$(GPP) nutshell.c nutshparser.tab.c lex.yy.c -o nutshell
+	$(GPP) global.c nutshell.c nutshparser.tab.c lex.yy.c -o nutshell
 
 nutshellC: 
 	$(CC) nutshell.c nutshparser.tab.c lex.yy.c -o nutshell

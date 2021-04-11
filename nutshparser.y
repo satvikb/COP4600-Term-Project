@@ -26,7 +26,7 @@ bool checkIfWordEndsAtName(char *name, char *word);
 int runSetAlias(char *name, char *word);
 
 int runSetEnv(char *variable, char *word);
-int runCommand(struct commandpipe entry);
+int runCommand(struct commandpipe entry, int inputPipe[], int outputPipe[]);
 %}
 
 %union {char *string;}
@@ -173,6 +173,7 @@ int runSetEnv(char *variable, char *word){
 	strcpy(varTable.word[varIndex], word);
 	varIndex++;
 
+	return 1;
 }
 
 // ASSUMPTION: a command can only do one of either Output to file or Redirect into pipe, Not both.
@@ -192,21 +193,6 @@ int runCommandTable(struct command commandTable[]){
 			commandTable[3] = {CMD: head, # arg: 1, args: [-3](?), input: null, outputFileName: favcolors.txt}
 
 	*/
-	/*
-		loop:
-			setup input output between commands in command table
-			^ i/o should only ever be from previous or next command
-
-			Create commandpipe struct:
-				test if input file exists:
-					yes: pipe to it
-					no: pipe to standard input
-				// TODO also deal with 2>&1 (maybe this should be dealt with outside the loop at the end)
-				test if output file exists: 
-					yes: output pipe to it
-					no: &1
-			runCommand(commandpipe)
-	*/
 
 	// https://stackoverflow.com/questions/18914960/how-to-iterate-over-of-an-array-of-structures/18914961
 	struct command *ptr = commandTable;
@@ -222,7 +208,7 @@ int runCommandTable(struct command commandTable[]){
 		curIn[1] - write end, input (current command -> next command)
 	*/
 
-	int cutIn[2];
+	int curIn[2];
 	int curOut[2];
 	int tmp[2];
 
@@ -238,6 +224,8 @@ int runCommandTable(struct command commandTable[]){
 	dup2(STDOUT_FILENO, curOut[1]);
 
 	dup2(STDIN_FILENO, tmp[1]);
+
+	int validCommandCount = 0;
 
 	for(int i = 0; i < 32 - 1/*lenCommandTable*/; i++, ptr++){
 		if(ptr->commandName[0] != '\0'){
@@ -279,25 +267,26 @@ int runCommandTable(struct command commandTable[]){
 			runCommand(cmdPipe, curIn, curOut);
 
 
-			close(cutIn[0]);
-			close(cutIn[1]);
+			close(curIn[0]);
+			close(curIn[1]);
 			close(curOut[0]);
 			close(curOut[1]);
 
-
+			validCommandCount += 1;
 		}else{
 			// found a command that is null, we are done with command table
 			break;
 		}
 	}
 
+	// TODO handle the & and background processing. do that here (at the command level, race conditions between commands?)? or at the table level?
 	int status;
-  	pid_t wpid = waitpid(pid, &status, 0); 
-
+	for (int i = 0; i < validCommandCount; i++)
+		wait(&status);
 	// reset commandTable here
+	return 0;
 }
 
-// recursive call, maybe need to pass in other fds from the runCommandTable function?
 // http://www.rozmichelle.com/pipes-forks-dups/
 
 // create child to run the process
@@ -310,45 +299,17 @@ int runCommand(struct commandpipe entry, int inputPipe[], int outputPipe[]){
 	// int *inputPipe = entry.inputPipe;
 	// int *outputPipe = entry.outputPipe;
 
-	/*
-		https://man7.org/linux/man-pages/man2/pipe.2.html
-
-		inputPipe[0] - READ END
-		inputPipe[1] - WRITE END
-	*/
-
-	// maybe change the output here?
-	// maybe dup2 with outputpipe and stdout?
-
-
-	// create child process
-	// REMEMBER CHILD HAS EVERYTHING COPIED AT THIS POINT (INCLUDING STDIN AND STDOUT)
-	// TODO TEST IF THE INPUTPIPE AND OUTPUT PIPE ALSO COPIES OVER OR IF JUST POINTERS.
-	// NEED TO MAKE SURE IT COPIES AND ARE NOT JUST POINTERS... or do pointers even matter?
 	pid_t pid = fork();
 	if(pid == 0){
 		// child
-		/*
-			so at this point, we have to make inputPipe[0] the input to the 
-			process we are about to execute?
-
-			REMEMBER EVERYTHING IN THIS IF STATEMENT IS IN THE CONTEXT OF THE CHILD
-			THE READ END OF THE PIPE IS INPUT IN TERMS OF CHILD
-		*/
-		
 
 		// assign the input of the new exec to be the read from the read end of the input pipe
 		dup2(inputPipe[0], STDIN_FILENO);
 		// assign the output of the new exec to be written to the write end of the output pipe
 		dup2(outputPipe[1], STDOUT_FILENO);
 
-
-		// so at this point inputPipe[0] is not needed since the readable end of the pipe
-		// is associated with either stdin or the file(?)
 		close(inputPipe[0]);
-		// close the write end of the pipe in child
 		close(inputPipe[1]);
-
 		close(outputPipe[0]);
 		close(outputPipe[1]);
 
@@ -367,14 +328,5 @@ int runCommand(struct commandpipe entry, int inputPipe[], int outputPipe[]){
 
 	// parent only section
 
-	// read end of pipe not used in parent
-	// DONE IN PARENT FUNCTION
-	// close(inputPipe[0]);
-
-
-	// wait for child to exit.
-	// TODO handle the & and background processing. do that here (at the command level, race conditions between commands?)? or at the table level?
-	// int status;
-  	// pid_t wpid = waitpid(pid, &status, 0); 
 	return 0;
 }
