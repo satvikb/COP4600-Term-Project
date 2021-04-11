@@ -1,5 +1,6 @@
-// This is ONLY a demo micro-shell whose purpose is to illustrate the need for and how to handle nested alias substitutions and Flex start conditions.
-// This is to help students learn these specific capabilities, the code is by far not a complete nutshell by any means.
+#include <vector>
+using namespace std;
+
 struct evTable {
    char var[128][100]; // array of strings max length of 100
    char word[128][100];
@@ -28,6 +29,7 @@ char* subAliases(char* name);
 extern struct evTable varTable;
 extern struct evTable varTable;
 extern struct aTable aliasTable;
-extern struct command commandTable[32];
+extern struct vector<command> commandTable;
+// extern struct command commandTable[32];
 extern int aliasIndex;
 extern int varIndex;

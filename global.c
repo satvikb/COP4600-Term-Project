@@ -1,7 +1,9 @@
 #include "global.h"
 #include <vector>
+using namespace std;
+
 struct evTable varTable;
 struct aTable aliasTable;
-struct command commandTable[32];
+struct vector<command> commandTable;//[32];
 int aliasIndex, varIndex;
-std::vector<int> weCanUseCPP;
+// std::vector<int> weCanUseCPP;
