@@ -20,8 +20,8 @@ struct commandpipe {
 	char *commandName;
    int numberArguments;
    char *args; // TODO, this should be a pointer to a list of strings/char[] (or one string) with each arg being null terminated
-	int inputPipe[2];
-   int outputPipe[2];
+	// int inputPipe[2];
+   // int outputPipe[2];
 };
 
 struct evTable varTable;

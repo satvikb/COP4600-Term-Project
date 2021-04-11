@@ -1,7 +1,7 @@
 CC=/usr/bin/cc
 GPP=/usr/bin/g++
 
-all:  bison-config flex-config nutshellC
+all:  bison-config flex-config nutshell
 
 bison-config:
 	bison -d nutshparser.y

@@ -21,7 +21,10 @@ chdir (path) - change working directory
 int yylex(); 
 int yyerror(char *s);
 int runCD(char* arg);
+
+bool checkIfWordEndsAtName(char *name, char *word);
 int runSetAlias(char *name, char *word);
+
 int runSetEnv(char *variable, char *word);
 int runCommand(struct commandpipe entry);
 %}
@@ -88,6 +91,33 @@ int runCD(char* arg) {
 	return 1;
 }
 
+
+/*
+existing:
+alias one two
+alias two three
+
+ALIAS NAME WORD
+
+to add:
+alias three one
+
+*/
+// recursive
+bool checkIfWordEndsAtName(char *name, char *word){
+	for (int i = 0; i < aliasIndex; i++) {
+		// initial check, start of cycle
+		if(strcmp(aliasTable.name[i], word) == 0){
+			if(strcmp(aliasTable.word[i], name) == 0){
+				// cycle, invalid
+				return true;
+			}
+			return checkIfWordEndsAtName(aliasTable.word[i], name); // check if two ends at three
+		}
+	}
+	return false;
+}
+
 // the alias is name, = word. word "shortened" to name / alias
 int runSetAlias(char *name, char *word) {
 	printf("Setting alias name \"%s\".\n", name);
@@ -107,6 +137,9 @@ int runSetAlias(char *name, char *word) {
 		// check if name/alias already exists, override if it does
 		else if(strcmp(aliasTable.name[i], name) == 0) {
 			strcpy(aliasTable.word[i], word);
+			return 1;
+		}else if(checkIfWordEndsAtName(name, word) == true){
+			printf("Cycle.");
 			return 1;
 		}
 	}
@@ -175,58 +208,107 @@ int runCommandTable(struct command commandTable[]){
 			runCommand(commandpipe)
 	*/
 
+	// https://stackoverflow.com/questions/18914960/how-to-iterate-over-of-an-array-of-structures/18914961
 	struct command *ptr = commandTable;
-	for(int i = 0; i < 32/*lenCommandTable*/; i++, ptr++){
-		struct commandpipe cmdPipe;
 
-		strcpy(cmdPipe.commandName, ptr->commandName);
-		cmdPipe.numberArguments = ptr->numberArguments;
-		strcpy(cmdPipe.args, ptr->args);
+	// maybe use a pipe system outside the loop to facilitate data transfer?
+	/*
+		OUTPUT OF CURRENT COMMAND:
+		curOut[0] - read end of current command output (current command -> next command), 
+		curOut[1] - write end, input (current command -> next command)
 
-		pipe(cmdPipe.inputPipe);
-		
-		// assign the input to the child
-		// if there is an input file, we read from it and write into pipe
+		INPUT TO CURRENT COMMAND:
+		curIn[0] - read end of current command output (prev command -> current command), 
+		curIn[1] - write end, input (current command -> next command)
+	*/
 
-		if(ptr->inputFileName[0] != '\0'){
-			// input file name is not empty
-			// so we write into the write end (input) of the pipe for the child?
+	int cutIn[2];
+	int curOut[2];
+	int tmp[2];
 
-			// TODO change this to be input file data
-			// https://man7.org/linux/man-pages/man3/dprintf.3p.html // https://linux.die.net/man/3/dprintf
-			// write to input side of pipe for the child
-			dprintf(cmdPipe.inputPipe[1], "This should be the file input\n"); 
+	// init pipes
+	pipe(curIn);
+	pipe(curOut);
+	pipe(tmp);
+
+	// defaults
+	// assign standard input into write end of input pipe to command
+	// dup2(STDIN_FILENO, curIn[1]); // redundant when using tmp
+	// assign standard output into write end of output pipe from command
+	dup2(STDOUT_FILENO, curOut[1]);
+
+	dup2(STDIN_FILENO, tmp[1]);
+
+	for(int i = 0; i < 32 - 1/*lenCommandTable*/; i++, ptr++){
+		if(ptr->commandName[0] != '\0'){
+			struct commandpipe cmdPipe;
+			
+			strcpy(cmdPipe.commandName, ptr->commandName);
+			cmdPipe.numberArguments = ptr->numberArguments;
+			strcpy(cmdPipe.args, ptr->args);
+
+			// ASSIGN INPUT TO COMMAND
+			// 1 - assign output (read end) of tmp into input write end. (data written to tmp[1] is from previous command or stdin)
+			// 2 - check if Input file name exists, if it does READ IN INPUT
+				// read file: pretty much write equivalent of dup2(fileNameFd, curIn[1]);
+			// DNE: leave input as is (either default stdin, or assigned by previous iteration)
+
+			// ASSIGN OUTPUT FROM COMMAND
+			// 3 - check if next command in table exists
+				// next command exists: assign curOut[0] to tmp[1] ( dup2(curOut[0], tmp[1]) ) (route output of this command into next)
+			// DNE: leave output
+
+			// run the command with cutIn and curOut
+			// *outputPipe[0] // THE READ END OF THE OUTPUT, THIS IS WHAT GOES TO NEXT COMMAND*
+
+
+			// implementation of above:
+			dup2(tmp[0], curIn[1]); // 1
+			if(ptr->inputFileName[0] != '\0'){ // 2 - check if input file is not null
+				// open file, write data to pipe. maybe wait to write until command starts running
+				// to prevent buffer limit / deadlock?
+
+			}
+
+			// assuming ptr++ is equivalent to ptr = ptr + 1, then get next element in table
+			if((ptr+1)->commandName[0] != '\0'){
+				dup2(curOut[0], tmp[1]);
+			}
+
+			// run before close to prevent deadlock
+			runCommand(cmdPipe, curIn, curOut);
+
+
+			close(cutIn[0]);
+			close(cutIn[1]);
+			close(curOut[0]);
+			close(curOut[1]);
+
+
 		}else{
-			// no input file. so this needs to be either no input or 
-			// TODO: piped data from another command
+			// found a command that is null, we are done with command table
+			break;
 		}
-
-		// finishing writing data for child
-		close(cmdPipe.inputPipe[1]);
-
-		// it should be ok if we runCommand after closing pipe right? data should still exist in pipe?
-		runCommand(cmdPipe);
-
-
-
-
-
-
-
 	}
 
+	int status;
+  	pid_t wpid = waitpid(pid, &status, 0); 
 
 	// reset commandTable here
 }
 
 // recursive call, maybe need to pass in other fds from the runCommandTable function?
-//http://www.rozmichelle.com/pipes-forks-dups/
-int runCommand(struct commandpipe entry){
+// http://www.rozmichelle.com/pipes-forks-dups/
+
+// create child to run the process
+// function assumes inputPipe and outputPipe are already created
+// inputPipe and outputPipe are NOT NULL, they will either be pipe fd or 0,1,2
+int runCommand(struct commandpipe entry, int inputPipe[], int outputPipe[]){
 	char *cmdName = entry.commandName;
 	int argCount = entry.numberArguments;
 	char *args = entry.args;
-	int *inputPipe = entry.inputPipe;
-	int *outputPipe = entry.outputPipe;
+	// int *inputPipe = entry.inputPipe;
+	// int *outputPipe = entry.outputPipe;
 
 	/*
 		https://man7.org/linux/man-pages/man2/pipe.2.html
@@ -255,15 +337,20 @@ int runCommand(struct commandpipe entry){
 		*/
 		
 
-		// read end of pipe will assigned be standard input of child? yes, the write end will be from parent
-		// https://man7.org/linux/man-pages/man2/dup2.2.html
+		// assign the input of the new exec to be the read from the read end of the input pipe
 		dup2(inputPipe[0], STDIN_FILENO);
+		// assign the output of the new exec to be written to the write end of the output pipe
+		dup2(outputPipe[1], STDOUT_FILENO);
+
 
 		// so at this point inputPipe[0] is not needed since the readable end of the pipe
 		// is associated with either stdin or the file(?)
 		close(inputPipe[0]);
 		// close the write end of the pipe in child
 		close(inputPipe[1]);
+
+		close(outputPipe[0]);
+		close(outputPipe[1]);
 
 		// run the command using execv (an array of args)
 
@@ -281,12 +368,13 @@ int runCommand(struct commandpipe entry){
 	// parent only section
 
 	// read end of pipe not used in parent
-	close(inputPipe[0]);
+	// DONE IN PARENT FUNCTION
+	// close(inputPipe[0]);
 
 
 	// wait for child to exit.
 	// TODO handle the & and background processing. do that here (at the command level, race conditions between commands?)? or at the table level?
-	int status;
-  	pid_t wpid = waitpid(pid, &status, 0); 
+	// int status;
+  	// pid_t wpid = waitpid(pid, &status, 0); 
 	return 0;
 }
