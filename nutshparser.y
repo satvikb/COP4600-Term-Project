@@ -265,9 +265,9 @@ void runExampleCommand(){
 	grep.args = grepArgs;
 	grep.outputFileName = "testOut2.txt";
 
-	commandTable.push_back(start);
-	commandTable.push_back(cat);
-	commandTable.push_back(grep);
+	// commandTable.push_back(start);
+	// commandTable.push_back(cat);
+	commandTable.push_back(grep); // if only command is grep, it hangs. this is expected.
 
 	runCommandTable(commandTable);
 }
@@ -282,8 +282,8 @@ int runCommandTable(struct vector<command> commandTable){
 	/*
 		pipes = 
 		[
-			Output for 1: [5,6]
-			Output for 2: [9,10]
+			Output pipe for 1: [5,6]
+			Output pipe for 2: [9,10]
 		]
 	*/
 
@@ -292,12 +292,12 @@ int runCommandTable(struct vector<command> commandTable){
 	// initialize all pipes (just do pipe())
 	for(int i = 0; i < commandTable.size(); i++){
 		command cmd = commandTable[i];
-		pipe(pipes[i]);
 	}
 	
 	// 3rd loop - execute commands, deal with actual files here
 	for(int i = 0; i < validCommandCount; i++){
 		command cmd = commandTable[i];
+		pipe(pipes[i]);
 
 		if(fork() == 0){
 			// execute command
@@ -320,29 +320,17 @@ int runCommandTable(struct vector<command> commandTable){
 			bool lastCommand = i == validCommandCount - 1;
 			
 			if(firstCommand && !lastCommand){
-				cout << "TO STDOUT" << endl;
 				// only assign stdout to write to pipe
 				dup2(pipes[i][INPUT_END], STDOUT_FILENO);
 			}
 			if(lastCommand && !firstCommand){
+				// assign pipe output to STDOUT, then stdout either goes to file or just left alone
 				dup2(STDOUT_FILENO, pipes[i][OUTPUT_END]);
-
 				// stdin becomes output of previous pipe
 				dup2(pipes[i-1][OUTPUT_END], STDIN_FILENO);
-
-				// // dont like having a special case like this
-				// if(validCommandCount <= 1){
-				// 	// TODO it works without this?
-				// 	// first and last command, make the read end of the pipe (for the same first cmd) the input to the command
-				// 	dup2(pipes[0][OUTPUT_END], STDIN_FILENO);
-				// }else{
-				// 	dup2(pipes[i-1][OUTPUT_END], STDIN_FILENO);
-				// }
-
 			}
 			if(!(firstCommand || lastCommand)){
 				// REMEMBER THIS DOES NOT RUN IN TWO COMMAND CONFIG
-				cout << "MIDDLE COMMAND " << cmd.commandName << endl;
 				// middle command
 				// assign stdin to be output from previous command
 				dup2(pipes[i-1][OUTPUT_END], STDIN_FILENO);
@@ -350,9 +338,6 @@ int runCommandTable(struct vector<command> commandTable){
 				dup2(pipes[i][INPUT_END], STDOUT_FILENO);
 			}
 			if(lastCommand && !cmd.outputFileName.empty()){
-				cout << "BACK TO STDOUT" << endl;
-				cout << "OUTPUT TO FILE" << endl;
-
 				// write to file https://stackoverflow.com/questions/8516823/redirecting-output-to-a-file-in-c
 				int out = open(&cmd.outputFileName[0], O_RDWR|O_CREAT|O_APPEND, 0600);
 				if (-1 == out) { 
@@ -360,22 +345,13 @@ int runCommandTable(struct vector<command> commandTable){
 					return 255; 
 				}
 
-				// int save_out = dup(STDOUT_FILENO);
-
 				dup2(out, STDOUT_FILENO);
-				// dup2(out, pipes[i][OUTPUT_END]);
-				// dup2(out, pipes[i][INPUT_END]);
-				// dup2(pipes[i][INPUT_END], out);
-
-				// fflush(stdout);
+				// TODO it works with and without this, keep?
+				fflush(stdout);
 				close(out);
-
-				// dup2(save_out, STDOUT_FILENO);
-				// close(save_out);
 			}
 
 			if(lastCommand && !firstCommand){
-				
 				// because we close on i+1, close i on the last command
 				close(pipes[i][OUTPUT_END]);
 				close(pipes[i][INPUT_END]);
@@ -385,6 +361,7 @@ int runCommandTable(struct vector<command> commandTable){
 				close(pipes[i-1][OUTPUT_END]);
 				close(pipes[i-1][INPUT_END]);
 			}else if(validCommandCount == 1){
+				// if only one command, above was changed such that no pipes are used. close them
 				close(pipes[i][OUTPUT_END]);
 				close(pipes[i][INPUT_END]);
 			}
