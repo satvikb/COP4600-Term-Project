@@ -99,13 +99,13 @@ printenv            { return PRINTENV; }
                             for ( int i = strlen(subAliases(yytext)) - 1; i >= 0; --i )
                                 unput( yycopy[i] );
                             free( yycopy );
-                        } else if(addToCmdTable(yytext)) {
-                            return CUSTOM_CMD; 
-                        } else {
-                            printf("yytext: %s\n", yytext);
-                            yylval.string = strdup(yytext);
-                            return STRING;
-                        };
+                    } else if(addToCmdTable(yytext)) {
+                        return CUSTOM_CMD; 
+                    } else {
+                        printf("yytext: %s\n", yytext);
+                        yylval.string = strdup(yytext);
+                        return STRING;
+                    };
                     }
 
 %%
