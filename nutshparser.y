@@ -234,13 +234,12 @@ int runCommandTable(struct vector<command> commandTable){
 			if(pid == 0){
 				// child
 
-				cout << "[" << cmd.commandName << "]" << " Child. Begin pipe: " << cmd.outputPipe[0] << "/" << cmd.outputPipe[1] << endl;
 				// assign output of command to write end of output pipe
 				bool lastElement = (it != commandTable.end()) && (it + 1 == commandTable.end());
-				std::cout << "In child1. " << cmd.commandName << "Last: " << lastElement << endl;
+				cout << "[" << cmd.commandName << "]" << " Child. Begin pipe: " << cmd.outputPipe[0] << "/" << cmd.outputPipe[1] << ". Last cmd: " << lastElement << endl;
 
 				if (lastElement || cmd.outputFileName[0] != '\0'){
-									std::cout << "In child3. " << cmd.commandName << endl;
+					std::cout << "In child3. " << cmd.commandName << endl;
 
 					// this is the last command or outfile file isnt empty
 					if(lastElement){
