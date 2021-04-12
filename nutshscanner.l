@@ -25,13 +25,13 @@ bool ifAlias(char* name){
     }
     return false;
 }
-bool addToCmdTable(char* arg){
+bool ifCmd(char* arg){
     if(arg[0] == '/') {
         if( access( arg, X_OK ) == 0 ){
-            command cmd;
-            cmd.commandName = arg;
+            // command cmd;
+            // cmd.commandName = arg;
             
-            commandTable.push_back(cmd);
+            // commandTable.push_back(cmd);
 
             return true;
         } else {
@@ -54,11 +54,13 @@ bool addToCmdTable(char* arg){
                     strcat(absPath, arg);
 
                     if( access( absPath, X_OK ) == 0 ){
-                        command cmd;
-                        cmd.commandName = absPath;
-                        commandTable.push_back(cmd);
+                        // command cmd;
+                        // cmd.commandName = absPath;
+                        // commandTable.push_back(cmd);
 
-                        printf("%s\n", dir->d_name);
+                        strcpy(arg, absPath);
+
+                        // printf("%s\n", dir->d_name);
                         return true;
                     }
                 }
@@ -90,25 +92,26 @@ cd		            { return CD;}
 alias		        { return ALIAS; }
 unalias             { return UNALIAS; }
 setenv		        { return SETENV; }
-ec                  { return EC; }
 unsetenv            { return UNSETENV; }
 printenv            { return PRINTENV; }
 "\n"		        { return END; }
 [\"]                { BEGIN(string_condition); }
-{CHAR}+             {if(ifAlias(yytext)) {
-                        printf("yytext before sub: %s\n", yytext);
-                            // source: https://www.cs.princeton.edu/~appel/modern/c/software/flex/flex.html
-                            char *yycopy = strdup( subAliases(yytext) );
-                            for ( int i = strlen(subAliases(yytext)) - 1; i >= 0; --i )
-                                unput( yycopy[i] );
-                            free( yycopy );
-                    } else if(addToCmdTable(yytext)) {
-                        return CUSTOM_CMD; 
-                    } else {
-                        printf("yytext: %s\n", yytext);
-                        yylval.string = strdup(yytext);
-                        return STRING;
-                    };
+{CHAR}+             {
+                        if(ifAlias(yytext)) {
+                            printf("yytext before sub: %s\n", yytext);
+                                // source: https://www.cs.princeton.edu/~appel/modern/c/software/flex/flex.html
+                                char *yycopy = strdup( subAliases(yytext) );
+                                for ( int i = strlen(subAliases(yytext)) - 1; i >= 0; --i )
+                                    unput( yycopy[i] );
+                                free( yycopy );
+                        } else if(ifCmd(yytext)) {
+                            yylval.string = strdup(yytext);
+                            return CUSTOM_CMD; 
+                        } else {
+                            //printf("yytext: %s\n", yytext);
+                            yylval.string = strdup(yytext);
+                            return STRING;
+                        };
                     }
 
 %%
