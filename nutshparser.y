@@ -15,11 +15,13 @@ chdir (path) - change working directory
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <vector>
 #include <sys/wait.h>
 #include "global.h"
 
 int yylex(); 
 int yyerror(char *s);
+
 int runCD(char* arg);
 
 bool checkIfWordEndsAtName(char *name, char *word);
@@ -31,25 +33,61 @@ int runCommandTable(struct vector<command> commandTable);
 void runExampleCommand();
 %}
 
-%union {char *string;}
+%code requires {
+    struct list {
+        char args[128][100];
+   		int size = 0;
+    };
+
+	list* newArgList();
+}
+
+%union {
+		char *string;
+		struct list* arguments;
+	}
 
 %start cmd_line
-%token <string> BYE CD STRING ALIAS UNALIAS SETENV UNSETENV PRINTENV EC END CUSTOM_CMD
+%token <string> BYE CD STRING ALIAS UNALIAS SETENV UNSETENV PRINTENV END CUSTOM_CMD
+%token PIPE "|"
+%token IN "<"
+%token OUT ">"
+%token A_OUT ">>"
+
+%nterm <arguments> arg_list
 
 %%
 cmd_line    :
 	BYE END 		                {exit(1); return 1; }
 	| CD STRING END        			{runCD($2); return 1;}
-	| SETENV STRING STRING END	{runSetEnv($2, $3); return 1;}
+	| SETENV STRING STRING END		{runSetEnv($2, $3); return 1;}
 	| ALIAS STRING STRING END		{runSetAlias($2, $3); return 1;}
-	| EC END					          {runExampleCommand(); return 1;}
-	| CUSTOM_CMD END				    {printf("%s\n", "success"); return 1;}
+	| CUSTOM_CMD arg_list END		{
+										printf("%s\n", $1); 
+										
+										for(int i = 0; i < ($2)->size; i++) {
+											printf("%s\t", $2->args[i]);
+										}
+										printf("\n");
+										
+										return 1;
+									}
+
+arg_list    :
+	%empty							{$$ = newArgList();}
+	| arg_list STRING               {$$ = $1; strcpy($$->args[$$->size], $2); $$->size++;}
 %%
 
 int yyerror(char *s) {
   printf("%s\n",s);
   return 0;
 }
+
+list* newArgList() {
+	list* l = (struct list*) malloc(sizeof(struct list));
+	return l;
+}
+
 
 int runCD(char* arg) {
 	if (arg[0] != '/') { // arg is relative path
