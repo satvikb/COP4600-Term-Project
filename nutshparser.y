@@ -21,7 +21,7 @@ chdir (path) - change working directory
 #define READ_END 0
 #define WRITE_END 1
 
-#define INPUT(i) i*2
+// #define INPUT(i) i*2
 #define OUTPUT(i) (i*2)+1
 
 int yylex(); 
@@ -195,7 +195,7 @@ void runExampleCommand(){
 	grep.args = grepArgs;
 
 	commandTable.push_back(start);
-	commandTable.push_back(cat);
+	// commandTable.push_back(cat);
 	// commandTable.push_back(grep);
 
 
@@ -218,7 +218,7 @@ void printFileName(int fd){
 // ASSUMPTION: any command/multiple commands can have input files with <.
 // ^ the spec however, only shows one < at the end of the line?
 int runCommandTable(struct vector<command> commandTable){
-	int pipes[commandTable.size()*2][2];
+	int pipes[commandTable.size()][2];
 	/*
 		pipes = 
 		[
@@ -234,7 +234,7 @@ int runCommandTable(struct vector<command> commandTable){
 	// initialize all pipes (just do pipe())
 	for(int i = 0; i < commandTable.size(); i++){
 		command cmd = commandTable[i];
-		pipe(pipes[INPUT(i)]);
+		// pipe(pipes[INPUT(i)]);
 		pipe(pipes[OUTPUT(i)]);
 		validCommandCount += 1;
 	}
@@ -250,39 +250,27 @@ int runCommandTable(struct vector<command> commandTable){
 
 		bool lastElement = i == validCommandCount-1;
 
-		if(i == 0){
-			cout << "SETTING INPUT FOR FIRST COMMAND" << endl;
-			// dup2(pipes[INPUT(i)][WRITE_END], STDIN_FILENO);
-			dup2(STDIN_FILENO, pipes[INPUT(i)][WRITE_END]);
-		}
+		// if(i == 0){
+		// 	cout << "SETTING INPUT FOR FIRST COMMAND" << endl;
+		// 	// dup2(pipes[INPUT(i)][WRITE_END], STDIN_FILENO);
+		// 	dup2(STDIN_FILENO, pipes[INPUT(i)][WRITE_END]);
+		// }
 		// HANDLE OUTPUT
 		if (lastElement || cmd.outputFileName[0] != '\0'){
 			// this is the last command or outfile file isnt empty
 			if(lastElement){
 				// revert standard out
 				cout << "BACK TO STDOUT " << OUTPUT(i) << endl;
-				dup2(STDOUT_FILENO, pipes[OUTPUT(i)][WRITE_END]); // confirmed right
+				// dup2(STDOUT_FILENO, pipes[OUTPUT(i)][WRITE_END]); // confirmed right
 			}else{
 				// TODO write to file
 			}
 		}else{
 			// first or middle command, redirect from prev
 			// output of this command goes to next command
-			dup2(pipes[INPUT(i+1)][WRITE_END], pipes[OUTPUT(i)][READ_END]);
+			// dup2(pipes[INPUT(i+1)][WRITE_END], pipes[OUTPUT(i)][READ_END]);
 			// close(pipes[OUTPUT(i)][READ_END]);
-
 		}
-		// cout << "[" << cmd.commandName << "]" << " Child. Pipe state after output redirection: " << cmd.outputPipe[0] << "/" << cmd.outputPipe[1] << endl;
-
-		// assign input
-		
-		// if(i > 0){
-			// get previous command pipe
-			// assign the input of this command to be the read end (read the output) of the output pipe from previous command
-			// dup2(commandTable[i-1].outputPipe[0], cmd.outputPipe[1]);//STDIN_FILENO);
-			// dup2(commandTable[i+1].inputPipe[WRITE_END], cmd.outputPipe[READ_END]);//STDIN_FILENO);
-		// }
-
 	}
 	
 	cout << "PRINTING PIPES " << validCommandCount << endl;
@@ -290,11 +278,11 @@ int runCommandTable(struct vector<command> commandTable){
 	for(int i = 0; i < validCommandCount; i++){
 		command cmd = commandTable[i];
 		bool lastElement = i == validCommandCount-1;
-		cout << "[" << cmd.commandName << "]" << " Child. Input pipe: " << pipes[INPUT(i)][0] << "/" << pipes[INPUT(i)][1] << ". Last cmd: " << lastElement << endl;
+		// cout << "[" << cmd.commandName << "]" << " Child. Input pipe: " << pipes[INPUT(i)][0] << "/" << pipes[INPUT(i)][1] << ". Last cmd: " << lastElement << endl;
 		cout << "[" << cmd.commandName << "]" << " Child. Output pipe: " << pipes[OUTPUT(i)][0] << "/" << pipes[OUTPUT(i)][1] << ". Last cmd: " << lastElement << endl;
 
-		printFileName(pipes[INPUT(i)][0]);
-		printFileName(pipes[INPUT(i)][1]);
+		// printFileName(pipes[INPUT(i)][0]);
+		// printFileName(pipes[INPUT(i)][1]);
 		printFileName(pipes[OUTPUT(i)][0]);
 		printFileName(pipes[OUTPUT(i)][1]);
 
@@ -321,35 +309,42 @@ int runCommandTable(struct vector<command> commandTable){
 			}
 			argv[cmd.args.size()+1] = NULL;
 
-			// https://man7.org/linux/man-pages/man3/exec.3.html
+			cout << "PIPEEPEPEPERPEPPPPPEPPEPEPPEPPEPEP " << i << " " << validCommandCount << cmd.commandName << endl; 
+			if(i == 0 || i == validCommandCount-1){
+				bool last = i == validCommandCount - 1;
+				cout << "FIRST OR LAST" << i << validCommandCount << validCommandCount-1 << last << endl;
+				
+				if(i == validCommandCount-1){
+					cout << "LASTd" << endl;
+					dup2(pipes[OUTPUT(i)][READ_END], STDIN_FILENO);
+				}
+
+				if(i == 0){
+					cout << "FIRST " << endl;
+					dup2(pipes[OUTPUT(i)][WRITE_END], STDOUT_FILENO);
+					cout << "FIRST 2" << endl;
+				}
+				cout << "k23" << endl;
+
+			}else{
+				// replace command's stdin with the read end of the input
+				// dup2(pipes[INPUT(i)][READ_END], STDIN_FILENO);
+				cout << "MIIIIIIIIIIIIDDDDDDDDDDDDDDDDDDDLLLLLE" << endl;
+
+				// replace command's stdout with write end of pipe for command
+				dup2(pipes[OUTPUT(i)][READ_END], STDIN_FILENO);
+				dup2(pipes[OUTPUT(i+1)][WRITE_END], STDOUT_FILENO);
+
+			}
 			// execv only returns on an error, and if there is an error, exit the child
-			std::cout << "CMD " << cmd.commandName << "DUPING" << pipes[INPUT(i)][WRITE_END] << endl;
-		
-			printFileName(pipes[INPUT(i)][WRITE_END]);
-			printFileName(STDIN_FILENO);
 
-			// if(i != validCommandCount-1)
-			// 	dup2(pipes[INPUT(i+1)][WRITE_END], pipes[OUTPUT(i)][READ_END]);
-
-			dup2(pipes[OUTPUT(i)][WRITE_END], STDOUT_FILENO);
-			dup2(pipes[INPUT(i)][READ_END], STDIN_FILENO);
-
-			printFileName(pipes[INPUT(i)][WRITE_END]);
-			printFileName(STDIN_FILENO);
-			std::cout << "Executing command3 " << cmd.commandName << endl;
-
-			// OR
-			// dup2(commandTable[i-1].outputPipe[READ_END], STDIN_FILENO);
 
 			close(pipes[OUTPUT(i)][READ_END]);
 			close(pipes[OUTPUT(i)][WRITE_END]);
-
-			close(pipes[INPUT(i)][READ_END]);
-			close(pipes[INPUT(i)][WRITE_END]);
-
-			std::cout << "Executing command " << cmd.commandName << endl;
-			printFileName(pipes[OUTPUT(i)][WRITE_END]);
-			printFileName(pipes[INPUT(i)][READ_END]);
+			// close(pipes[OUTPUT(i+1)][READ_END]);
+			// close(pipes[OUTPUT(i+1)][WRITE_END]);
+			// close(pipes[INPUT(i)][READ_END]);
+			// close(pipes[INPUT(i)][WRITE_END]);
 
 			if (execv(argv[0], (char **)argv) < 0){
 				cout << "ERROR" << errno << endl;
@@ -366,8 +361,10 @@ int runCommandTable(struct vector<command> commandTable){
 		close(pipes[OUTPUT(i)][READ_END]);
 		close(pipes[OUTPUT(i)][WRITE_END]);
 
-		close(pipes[INPUT(i)][READ_END]);
-		close(pipes[INPUT(i)][WRITE_END]);
+		// close(pipes[INPUT(i)][READ_END]);
+		// close(pipes[INPUT(i)][WRITE_END]);
+		// close(pipes[OUTPUT(i-1)][READ_END]);
+		// close(pipes[OUTPUT(i-1)][WRITE_END]);
 
 	}		
 	std::cout << "Waiting for all commands to finish " << validCommandCount << endl;
