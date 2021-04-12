@@ -28,7 +28,9 @@ bool ifAlias(char* name){
 bool addToCmdTable(char* arg){
     if(arg[0] == '/') {
         if( access( arg, X_OK ) == 0 ){
-            command cmd = { arg, 0, NULL, NULL, NULL };
+            command cmd;
+            cmd.commandName = arg;
+            
             commandTable.push_back(cmd);
 
             return true;
@@ -52,7 +54,8 @@ bool addToCmdTable(char* arg){
                     strcat(absPath, arg);
 
                     if( access( absPath, X_OK ) == 0 ){
-                        command cmd = { absPath, 0, NULL, NULL, NULL };
+                        command cmd;
+                        cmd.commandName = absPath;
                         commandTable.push_back(cmd);
 
                         printf("%s\n", dir->d_name);
