@@ -27,7 +27,6 @@ struct commandpipe {
 char* subAliases(char* name);
 
 extern struct evTable varTable;
-extern struct evTable varTable;
 extern struct aTable aliasTable;
 extern struct vector<command> commandTable;
 // extern struct command commandTable[32];
