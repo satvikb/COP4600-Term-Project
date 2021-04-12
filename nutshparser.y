@@ -231,8 +231,8 @@ int runCommandTable(struct vector<command> commandTable){
 
 			cout << "[" << cmd.commandName << "]" << " Begin pipe: " << cmd.outputPipe[0] << "/" << cmd.outputPipe[1] << endl;
 
-			int pid = fork();
-			if(pid == 0){
+			// int pid = fork();
+			// if(pid == 0){
 				// child
 
 				// assign output of command to write end of output pipe
@@ -240,74 +240,94 @@ int runCommandTable(struct vector<command> commandTable){
 				cout << "[" << cmd.commandName << "]" << " Child. Begin pipe: " << cmd.outputPipe[0] << "/" << cmd.outputPipe[1] << ". Last cmd: " << lastElement << endl;
 
 				if (lastElement || cmd.outputFileName[0] != '\0'){
-					std::cout << "In child3. " << cmd.commandName << endl;
+					cout << "[" << cmd.commandName << "]" << " Child. Last command. Reverting output pipe [BEFORE]: " << cmd.outputPipe[0] << "/" << cmd.outputPipe[1] << ". Last cmd: " << lastElement << endl;
 
 					// this is the last command or outfile file isnt empty
 					if(lastElement){
 						// revert standard out
 						// dup2(STDOUT_FILENO, 1);
 						dup2(1, STDOUT_FILENO);
+						dup2(STDOUT_FILENO, cmd.outputPipe[1]);
 					}else{
 						// TODO write to file
 					}
+					cout << "[" << cmd.commandName << "]" << " Child. Last command. Reverting output pipe [AFTER]: " << cmd.outputPipe[0] << "/" << cmd.outputPipe[1] << ". Last cmd: " << lastElement << endl;
+
 				}else{
-					std::cout << "Rerouting output to pipe write 1. " << cmd.commandName << endl;
+					cout << "[" << cmd.commandName << "]" << " Child. Redirecting STDOUT to pipe[1] [BEFORE]: " << cmd.outputPipe[0] << "/" << cmd.outputPipe[1] << endl;
 					dup2(cmd.outputPipe[1], STDOUT_FILENO);
-					std::cout << "Rerouting output to pipe write 2. " << cmd.commandName << endl;
+					cout << "[" << cmd.commandName << "]" << " Child. Redirecting STDOUT to pipe[1] [AFTER]: " << cmd.outputPipe[0] << "/" << cmd.outputPipe[1] << endl;
 
 				}
-				cout << "[" << cmd.commandName << "]" << " Child. Begin pipe: " << cmd.outputPipe[0] << "/" << cmd.outputPipe[1] << endl;
+				cout << "[" << cmd.commandName << "]" << " Child. Pipe state after output redirection: " << cmd.outputPipe[0] << "/" << cmd.outputPipe[1] << endl;
 
 				// assign input
 				
 				if(i > 0){
 					// get previous command pipe
-					std::cout << "Assigning INPUT from PREV [BEFORE] command: " << commandTable[i-1].outputPipe[0] << "/" << commandTable[i-1].outputPipe[1] << endl;
-					// assign the input of this command to be the read end of the output pipe from previous command
-					dup2(commandTable[i-1].outputPipe[0], STDIN_FILENO);
-					std::cout << "Assigning INPUT from PREV [AFTER] command: " << commandTable[i-1].outputPipe[0] << "/" << commandTable[i-1].outputPipe[1] << endl;
+					cout << "[" << cmd.commandName << "]" << " Child. [before] Pipe of Previous command: [" << commandTable[i-1].commandName << "] " << commandTable[i-1].outputPipe[0] << "/" << commandTable[i-1].outputPipe[1] << ". This command: " << cmd.outputPipe[0] << "/" << cmd.outputPipe[1] << endl;
+					// assign the input of this command to be the read end (read the output) of the output pipe from previous command
+					dup2(commandTable[i-1].outputPipe[0], cmd.outputPipe[1]);//STDIN_FILENO);
+					cout << "[" << cmd.commandName << "]" << " Child. [after] Pipe of Previous command: [" << commandTable[i-1].commandName << "] " << commandTable[i-1].outputPipe[0] << "/" << commandTable[i-1].outputPipe[1] << ". This command: " << cmd.outputPipe[0] << "/" << cmd.outputPipe[1] << endl;
 				}
 
 
 				close(cmd.outputPipe[0]);
 				close(cmd.outputPipe[1]);
 
-				cout << "[" << cmd.commandName << "]" << " Child. Begin pipe: " << cmd.outputPipe[0] << "/" << cmd.outputPipe[1] << endl;
+				cout << "[" << cmd.commandName << "]" << " Child. Pipe after input redirection: " << cmd.outputPipe[0] << "/" << cmd.outputPipe[1] << endl;
 
-				// execute command
-				// generate argv
-				std::cout << "Executing command1 " << cmd.commandName << endl;
-
-				char cmdNameC[cmd.commandName.length()+1];
-				strcpy(cmdNameC, cmd.commandName.c_str());
-				std::cout << "Executing command2 " << cmd.commandName << endl;
-
-				// create array of args
-				//https://stackoverflow.com/questions/5797837/how-to-pass-a-vector-of-strings-to-execv
-				const char **argv = new const char* [cmd.args.size()+2];
-				argv[0] = cmdNameC;
-				std::cout << "Executing command3 " << cmd.commandName << endl;
-
-				for(int i = 0; i < cmd.args.size(); i++){
-					argv[i+1] = cmd.args[i].c_str();
-				}
-				argv[cmd.args.size()+1] = NULL;
-				std::cout << "Executing command 4" << cmd.commandName << endl;
-
-				// https://man7.org/linux/man-pages/man3/exec.3.html
-				// execv only returns on an error, and if there is an error, exit the child
-
-				std::cout << "Executing command " << cmd.commandName << endl;
-				if (execv(argv[0], (char **)argv) < 0){
-					cout << "ERROR" << errno << endl;
-					exit(0);
-				}
-			}
+				// exit(1); // temp
+			// }
 
 			validCommandCount += 1;
 		}else{
 			// found a command that is null, we are done with command table
 			break;
+		}
+	}
+
+	// debug
+	for(int i = 0; i < validCommandCount; i++){
+		command cmd = commandTable[i];
+		cout << "PIPES [" << cmd.commandName << "]" << "Read end / output: " << cmd.outputPipe[0] << ". Write end / input:" << cmd.outputPipe[1] << endl;
+	}
+
+	// end debug
+
+
+	for(int i = 0; i < validCommandCount; i++){
+		command cmd = commandTable[i];
+
+		if(fork() == 1){
+					// execute command
+			// generate argv
+			std::cout << "Executing command1 " << cmd.commandName << endl;
+
+			char cmdNameC[cmd.commandName.length()+1];
+			strcpy(cmdNameC, cmd.commandName.c_str());
+			std::cout << "Executing command2 " << cmd.commandName << endl;
+
+			// create array of args
+			//https://stackoverflow.com/questions/5797837/how-to-pass-a-vector-of-strings-to-execv
+			const char **argv = new const char* [cmd.args.size()+2];
+			argv[0] = cmdNameC;
+			std::cout << "Executing command3 " << cmd.commandName << endl;
+
+			for(int i = 0; i < cmd.args.size(); i++){
+				argv[i+1] = cmd.args[i].c_str();
+			}
+			argv[cmd.args.size()+1] = NULL;
+			std::cout << "Executing command 4" << cmd.commandName << endl;
+
+			// https://man7.org/linux/man-pages/man3/exec.3.html
+			// execv only returns on an error, and if there is an error, exit the child
+
+			std::cout << "Executing command " << cmd.commandName << endl;
+			if (execv(argv[0], (char **)argv) < 0){
+				cout << "ERROR" << errno << endl;
+				exit(0);
+			}
 		}
 	}
 
