@@ -14,20 +14,14 @@ struct aTable {
 };
 struct command {
 	string commandName;
-   vector<string> args; // TODO, this should be a pointer to a list of strings/char[] (or one string) with each arg being null terminated
+   vector<string> args;
 	string inputFileName;
    string outputFileName;
+   int outputPipe[2];
 };
 
-struct commandpipe {
-	string commandName;
-   vector<string> args; // TODO, this should be a pointer to a list of strings/char[] (or one string) with each arg being null terminated
-	// int inputPipe[2];
-   // int outputPipe[2];
-};
 char* subAliases(char* name);
 
-extern struct evTable varTable;
 extern struct evTable varTable;
 extern struct aTable aliasTable;
 extern struct vector<command> commandTable;

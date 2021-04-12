@@ -26,7 +26,6 @@ bool checkIfWordEndsAtName(char *name, char *word);
 int runSetAlias(char *name, char *word);
 
 int runSetEnv(char *variable, char *word);
-int runCommand(struct commandpipe entry, int inputPipe[], int outputPipe[]);
 int runCommandTable(struct vector<command> commandTable);
 
 void runExampleCommand();
@@ -214,34 +213,6 @@ int runCommandTable(struct vector<command> commandTable){
 
 	*/
 
-	/*
-		OUTPUT OF CURRENT COMMAND:
-		curOut[0] - read end of current command output (current command -> next command), 
-		curOut[1] - write end, input (current command -> next command)
-
-		INPUT TO CURRENT COMMAND:
-		curIn[0] - read end of current command output (prev command -> current command), 
-		curIn[1] - write end, input (current command -> next command)
-	*/
-
-	// TODO probably not enough pipes, go back to old system of each command having input/output pipes...?
-	int curIn[2];
-	int curOut[2];
-	int tmp[2];
-
-	// init pipes
-	pipe(curIn);
-	pipe(curOut);
-	pipe(tmp);
-
-	// defaults
-	// assign standard input into write end of input pipe to command
-	dup2(STDIN_FILENO, curIn[1]); // redundant when using tmp
-	// assign standard output into write end of output pipe from command
-	dup2(STDOUT_FILENO, curOut[1]);
-
-	dup2(STDIN_FILENO, tmp[1]);
-
 	int validCommandCount = 0;
 
 	vector<command>::iterator it = commandTable.begin();
@@ -249,55 +220,90 @@ int runCommandTable(struct vector<command> commandTable){
 	for(it = commandTable.begin(); it != commandTable.end(); it++,i++){
 		command cmd = commandTable[i];
 		if(cmd.commandName[0] != '\0'){
-			// create new command pipe
-			struct commandpipe cmdPipe;
-			
-			cmdPipe.commandName = cmd.commandName;
-			cmdPipe.args = cmd.args;
+			pipe(cmd.outputPipe);
 
-			// ASSIGN INPUT TO COMMAND
-			// 1 - assign output (read end) of tmp into input write end. (data written to tmp[1] is from previous command or stdin)
-			// 2 - check if Input file name exists, if it does READ IN INPUT
-				// read file: pretty much write equivalent of dup2(fileNameFd, curIn[1]);
-			// DNE: leave input as is (either default stdin, or assigned by previous iteration)
-
-			// ASSIGN OUTPUT FROM COMMAND
-			// 3 - check if next command in table exists
-				// next command exists: assign curOut[0] to tmp[1] ( dup2(curOut[0], tmp[1]) ) (route output of this command into next)
-			// DNE: leave output
-
-			// run the command with cutIn and curOut
-			// *outputPipe[0] // THE READ END OF THE OUTPUT, THIS IS WHAT GOES TO NEXT COMMAND*
-
-
-			// implementation of above:
-
-			// replace input write end with read end from tmp (program input becomes tmp[0])
-			dup2(tmp[0], curIn[1]); // 1
 			if(cmd.inputFileName[0] != '\0'){ // 2 - check if input file is not null
 				// open file, write data to pipe. maybe wait to write until command starts running
 				// to prevent buffer limit / deadlock?
 
 			}
 
-			if(i < commandTable.size()-1){
-				if(commandTable[i+1].commandName[0] != '\0'){
-					std::cout << "PRE dup2 out0 to tmp1 " << curOut[0] << "," << curOut[1] << endl;
-					// replace tmp write end with output read (output is written as input to tmp)
-					dup2(curOut[0], tmp[1]);
-					std::cout << "dup2 out0 to tmp1 " << curOut[0] << "," << curOut[1] << endl;
+			cout << "[" << cmd.commandName << "]" << " Begin pipe: " << cmd.outputPipe[0] << "/" << cmd.outputPipe[1] << endl;
+
+			int pid = fork();
+			if(pid == 0){
+				// child
+
+				cout << "[" << cmd.commandName << "]" << " Child. Begin pipe: " << cmd.outputPipe[0] << "/" << cmd.outputPipe[1] << endl;
+				// assign output of command to write end of output pipe
+				bool lastElement = (it != commandTable.end()) && (it + 1 == commandTable.end());
+				std::cout << "In child1. " << cmd.commandName << "Last: " << lastElement << endl;
+
+				if (lastElement || cmd.outputFileName[0] != '\0'){
+									std::cout << "In child3. " << cmd.commandName << endl;
+
+					// this is the last command or outfile file isnt empty
+					if(lastElement){
+						// revert standard out
+						// dup2(STDOUT_FILENO, 1);
+						dup2(1, STDOUT_FILENO);
+					}else{
+						// TODO write to file
+					}
+				}else{
+					std::cout << "Rerouting output to pipe write 1. " << cmd.commandName << endl;
+					dup2(cmd.outputPipe[1], STDOUT_FILENO);
+					std::cout << "Rerouting output to pipe write 2. " << cmd.commandName << endl;
+
+				}
+				cout << "[" << cmd.commandName << "]" << " Child. Begin pipe: " << cmd.outputPipe[0] << "/" << cmd.outputPipe[1] << endl;
+
+				// assign input
+				
+				if(i > 0){
+					// get previous command pipe
+					std::cout << "Assigning INPUT from PREV [BEFORE] command: " << commandTable[i-1].outputPipe[0] << "/" << commandTable[i-1].outputPipe[1] << endl;
+					// assign the input of this command to be the read end of the output pipe from previous command
+					dup2(commandTable[i-1].outputPipe[0], STDIN_FILENO);
+					std::cout << "Assigning INPUT from PREV [AFTER] command: " << commandTable[i-1].outputPipe[0] << "/" << commandTable[i-1].outputPipe[1] << endl;
+				}
+
+
+				close(cmd.outputPipe[0]);
+				close(cmd.outputPipe[1]);
+
+				cout << "[" << cmd.commandName << "]" << " Child. Begin pipe: " << cmd.outputPipe[0] << "/" << cmd.outputPipe[1] << endl;
+
+				// execute command
+				// generate argv
+				std::cout << "Executing command1 " << cmd.commandName << endl;
+
+				char cmdNameC[cmd.commandName.length()+1];
+				strcpy(cmdNameC, cmd.commandName.c_str());
+				std::cout << "Executing command2 " << cmd.commandName << endl;
+
+				// create array of args
+				//https://stackoverflow.com/questions/5797837/how-to-pass-a-vector-of-strings-to-execv
+				const char **argv = new const char* [cmd.args.size()+2];
+				argv[0] = cmdNameC;
+				std::cout << "Executing command3 " << cmd.commandName << endl;
+
+				for(int i = 0; i < cmd.args.size(); i++){
+					argv[i+1] = cmd.args[i].c_str();
+				}
+				argv[cmd.args.size()+1] = NULL;
+				std::cout << "Executing command 4" << cmd.commandName << endl;
+
+				// https://man7.org/linux/man-pages/man3/exec.3.html
+				// execv only returns on an error, and if there is an error, exit the child
+
+				std::cout << "Executing command " << cmd.commandName << endl;
+				if (execv(argv[0], (char **)argv) < 0){
+					cout << "ERROR" << errno << endl;
+					exit(0);
 				}
 			}
-			
-			std::cout << "PIPE STATE. IN: " << curIn[0] << "/" << curIn[1] << ". OUT: " << curOut[0] << "/" << curOut[1] << ". TMP: " << tmp[0] << "/" << tmp[1] << endl;
-			std::cout << "Running command " << cmdPipe.commandName << endl;
-			// printf("Running command %s",)
-			// run before close to prevent deadlock
-			runCommand(cmdPipe, curIn, curOut);
 
-
-
-			
 			validCommandCount += 1;
 		}else{
 			// found a command that is null, we are done with command table
@@ -305,79 +311,23 @@ int runCommandTable(struct vector<command> commandTable){
 		}
 	}
 
-	std::cout << "Closing parent pipes" << endl;
-	close(curIn[0]);
-	close(curIn[1]);
-	close(curOut[0]);
-	close(curOut[1]);
-	close(tmp[0]);
-	close(tmp[1]);
-			
+
 
 	std::cout << "Waiting for all commands to finish " << validCommandCount << endl;
 	// TODO handle the & and background processing. do that here (at the command level, race conditions between commands?)? or at the table level?
 	int status;
 	for (int i = 0; i < validCommandCount; i++)
 		wait(&status);
+
+	std::cout << "Closing all pipes" << endl;
+	for(int i = 0; i < commandTable.size(); i++){
+		command cmd = commandTable[i];
+		close(cmd.outputPipe[0]);
+		close(cmd.outputPipe[1]);
+	}		
+
 	// reset commandTable here
 	return 0;
 }
 
 // http://www.rozmichelle.com/pipes-forks-dups/
-
-// create child to run the process
-// function assumes inputPipe and outputPipe are already created
-// inputPipe and outputPipe are NOT NULL, they will either be pipe fd or 0,1,2
-int runCommand(struct commandpipe entry, int inputPipe[], int outputPipe[]){
-	string cmdName = entry.commandName;
-	vector<string> args = entry.args;
-	// int *inputPipe = entry.inputPipe;
-	// int *outputPipe = entry.outputPipe;
-
-	pid_t pid = fork();
-	if(pid == 0){
-		// child
-
-		std::cout << "CHILD PIPE STATE. IN: " << inputPipe[0] << "/" << inputPipe[1] << ". OUT: " << outputPipe[0] << "/" << outputPipe[1] << "..." << STDIN_FILENO << endl;
-		// assign the input of the new exec to be the read from the read end of the input pipe
-		dup2(inputPipe[0], STDIN_FILENO);
-		// assign the output of the new exec to be written to the write end of the output pipe
-		dup2(outputPipe[1], STDOUT_FILENO);
-		std::cout << "CHILD PIPE STATE2. IN: " << inputPipe[0] << "/" << inputPipe[1] << ". OUT: " << outputPipe[0] << "/" << outputPipe[1] << "..." << STDIN_FILENO << endl;
-
-		close(inputPipe[0]);
-		close(inputPipe[1]);
-		close(outputPipe[0]);
-		close(outputPipe[1]);
-
-		// run the command using execv (an array of args)
-
-		// TODO use number of arguments and args string to create char *const argv[] for execv
-		// build exec arg array
-		// TODO with arguments
-
-		char cmdNameC[cmdName.length()+1];
-		strcpy(cmdNameC, cmdName.c_str());
-
-		// create array of args
-		//https://stackoverflow.com/questions/5797837/how-to-pass-a-vector-of-strings-to-execv
-		const char **argv = new const char* [args.size()+2];
-		argv[0] = cmdNameC;
-
-		for(int i = 0; i < args.size(); i++){
-			argv[i+1] = args[i].c_str();
-		}
-		argv[args.size()+1] = NULL;
-
-		// https://man7.org/linux/man-pages/man3/exec.3.html
-		// execv only returns on an error, and if there is an error, exit the child
-		if (execv(argv[0], (char **)argv) < 0){
-			cout << "ERROR" << errno << endl;
-			exit(0);
-		}
-	}
-
-	// parent only section
-
-	return 0;
-}
