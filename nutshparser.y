@@ -225,9 +225,7 @@ int runCommandTable(struct vector<command> commandTable){
 	/*
 		pipes = 
 		[
-			Input for 0: [3,4]
 			Output for 1: [5,6]
-			Input for 2: [7,8]
 			Output for 2: [9,10]
 		]
 	*/
@@ -240,55 +238,21 @@ int runCommandTable(struct vector<command> commandTable){
 		// pipe(pipes[INPUT(i)]);
 		pipe(pipes[i]);
 	}
-
-	// 2nd loop - handle redirection
-	for(int i = 0; i < validCommandCount; i++){
-		command cmd = commandTable[i];
-		
-		if(cmd.inputFileName[0] != '\0'){ // 2 - check if input file is not null
-			// open file, write data to pipe. maybe wait to write until command starts running
-			// to prevent buffer limit / deadlock?
-		}
-
-		bool lastElement = i == validCommandCount-1;
-
-		// if(i == 0){
-		// 	cout << "SETTING INPUT FOR FIRST COMMAND" << endl;
-		// 	// dup2(pipes[INPUT(i)][WRITE_END], STDIN_FILENO);
-		// 	dup2(STDIN_FILENO, pipes[INPUT(i)][WRITE_END]);
-		// }
-		// HANDLE OUTPUT
-		if (lastElement || cmd.outputFileName[0] != '\0'){
-			// this is the last command or outfile file isnt empty
-			if(lastElement){
-				// revert standard out
-				cout << "BACK TO STDOUT " << OUTPUT(i) << endl;
-				// dup2(STDOUT_FILENO, pipes[OUTPUT(i)][WRITE_END]); // confirmed right
-			}else{
-				// TODO write to file
-			}
-		}else{
-			// first or middle command, redirect from prev
-			// output of this command goes to next command
-			// dup2(pipes[INPUT(i+1)][WRITE_END], pipes[OUTPUT(i)][READ_END]);
-			// close(pipes[OUTPUT(i)][READ_END]);
-		}
-	}
 	
-	cout << "PRINTING PIPES " << validCommandCount << endl;
-	// print pipes for debug
-	for(int i = 0; i < validCommandCount; i++){
-		command cmd = commandTable[i];
-		bool lastElement = i == validCommandCount-1;
-		// cout << "[" << cmd.commandName << "]" << " Child. Input pipe: " << pipes[INPUT(i)][0] << "/" << pipes[INPUT(i)][1] << ". Last cmd: " << lastElement << endl;
-		cout << "[" << cmd.commandName << "]" << " Child. Output pipe: " << pipes[OUTPUT(i)][0] << "/" << pipes[OUTPUT(i)][1] << ". Last cmd: " << lastElement << endl;
+	// cout << "PRINTING PIPES " << validCommandCount << endl;
+	// // print pipes for debug
+	// for(int i = 0; i < validCommandCount; i++){
+	// 	command cmd = commandTable[i];
+	// 	bool lastElement = i == validCommandCount-1;
+	// 	// cout << "[" << cmd.commandName << "]" << " Child. Input pipe: " << pipes[INPUT(i)][0] << "/" << pipes[INPUT(i)][1] << ". Last cmd: " << lastElement << endl;
+	// 	cout << "[" << cmd.commandName << "]" << " Child. Output pipe: " << pipes[OUTPUT(i)][0] << "/" << pipes[OUTPUT(i)][1] << ". Last cmd: " << lastElement << endl;
 
-		// printFileName(pipes[INPUT(i)][0]);
-		// printFileName(pipes[INPUT(i)][1]);
-		printFileName(pipes[OUTPUT(i)][0]);
-		printFileName(pipes[OUTPUT(i)][1]);
+	// 	// printFileName(pipes[INPUT(i)][0]);
+	// 	// printFileName(pipes[INPUT(i)][1]);
+	// 	printFileName(pipes[OUTPUT(i)][0]);
+	// 	printFileName(pipes[OUTPUT(i)][1]);
 
-	}
+	// }
 	
 	// 3rd loop - execute commands, deal with actual files here
 	for(int i = 0; i < validCommandCount; i++){
@@ -339,7 +303,7 @@ int runCommandTable(struct vector<command> commandTable){
 				dup2(pipes[i][WRITE_END], STDOUT_FILENO);
 			}
 
-			cout << "CLOSING CHILD PIPES" << endl;
+			cout << "CLOSING CHILD PIPES shell" << endl;
 			close(pipes[i][READ_END]);
 			close(pipes[i][WRITE_END]);
 
