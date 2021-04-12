@@ -17,8 +17,8 @@ struct command {
    vector<string> args;
 	string inputFileName;
    string outputFileName;
-   int outputPipe[2];
 };
+
 
 char* subAliases(char* name);
 
