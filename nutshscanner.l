@@ -3,10 +3,9 @@
 // This is to help students learn these specific capabilities, the code is by far not a complete nutshell by any means.
 // Only "alias name word", "cd word", and "bye" run.
 #include "nutshparser.tab.h"
-#include <string.h>
 #include "global.h"
-#include <stdbool.h>
 #include "dirent.h"
+#include <string.h>
 #include <unistd.h>
 
 //#define unput(c) {yytchar= (c); if(yytchar=='\n') {yylineno--; *yysptr++=yytchar;}
@@ -88,6 +87,7 @@ cd		            { return CD;}
 alias		        { return ALIAS; }
 unalias             { return UNALIAS; }
 setenv		        { return SETENV; }
+ec                  { return EC; }
 unsetenv            { return UNSETENV; }
 printenv            { return PRINTENV; }
 "\n"		        { return END; }

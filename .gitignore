@@ -2,3 +2,4 @@ nutshell
 nutshparser.tab.c
 nutshparser.tab.h
 lex.yy.c
+.vscode/settings.json
