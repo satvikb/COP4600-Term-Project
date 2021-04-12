@@ -32,8 +32,13 @@ int runCD(char* arg);
 
 bool checkIfWordEndsAtName(char *name, char *word);
 int runSetAlias(char *name, char *word);
+int runPrintAlias();
+void unsetAlias(char* name);
 
 int runSetEnv(char *variable, char *word);
+int runPrintVariable();
+void unsetVariable(char* variable);
+
 int runCommandTable(struct vector<command> commandTable);
 
 void runExampleCommand();
@@ -68,7 +73,11 @@ cmd_line    :
 	BYE END 		                {exit(1); return 1; }
 	| CD STRING END        			{runCD($2); return 1;}
 	| SETENV STRING STRING END		{runSetEnv($2, $3); return 1;}
+	| UNSETENV STRING END			{unsetVariable($2); return 1;}
+	| PRINTENV END					{runPrintVariable(); return 1;}
 	| ALIAS STRING STRING END		{runSetAlias($2, $3); return 1;}
+	| ALIAS END						{runPrintAlias(); return 1;}
+	| UNALIAS STRING END			{unsetAlias($2); return 1;}
 	| CUSTOM_CMD arg_list END		{
 										printf("%s\n", $1); 
 										
@@ -98,20 +107,24 @@ list* newArgList() {
 
 int runCD(char* arg) {
 	if (arg[0] != '/') { // arg is relative path
-		strcat(varTable.word[0], "/"); // add a / to the current path
-		strcat(varTable.word[0], arg); // append the arg to the current path + /
+
+		// add a / to the current path
+		// append the arg to the current path + /
+		string newPath = envMap["PWD"]+"/"+arg;
 
 		// if error, shouldnt varTable.word[0] be reset to before concat?
-		if(chdir(varTable.word[0]) == 0) {  // change working directory
-			strcpy(aliasTable.word[0], varTable.word[0]); // set . to dir
-			strcpy(aliasTable.word[1], varTable.word[0]); // set .. to dir (?)
+		if(chdir(newPath.c_str()) == 0) {  // change working directory
+
+			envMap["PWD"] = newPath;
+			// strcpy(aliasTable.word[0], varTable.word[0]); // set . to dir
+			// strcpy(aliasTable.word[1], varTable.word[0]); // set .. to dir (?)
 
 			// not sure what the point of this is
-			char *pointer = strrchr(aliasTable.word[1], '/');
-			while(*pointer != '\0') {
-				*pointer ='\0';
-				pointer++;
-			}
+			// char *pointer = strrchr(aliasTable.word[1], '/');
+			// while(*pointer != '\0') {
+			// 	*pointer ='\0';
+			// 	pointer++;
+			// }
 		}
 		else {
 			//strcpy(varTable.word[0], varTable.word[0]); // fix
@@ -121,20 +134,21 @@ int runCD(char* arg) {
 	}
 	else { // arg is absolute path
 		if(chdir(arg) == 0){ // change dir
-			strcpy(aliasTable.word[0], arg); // set . to arg
-			strcpy(aliasTable.word[1], arg); // set .. to arg (?)
-			strcpy(varTable.word[0], arg); // set PWD to arg
+			// strcpy(aliasTable.word[0], arg); // set . to arg
+			// strcpy(aliasTable.word[1], arg); // set .. to arg (?)
+			// strcpy(varTable.word[0], arg); // set PWD to arg
+			envMap["PWD"] = arg;
 
 			// ?
-			char *pointer = strrchr(aliasTable.word[1], '/');
-			while(*pointer != '\0') {
-				*pointer ='\0';
-				pointer++;
-			}
+			// char *pointer = strrchr(aliasTable.word[1], '/');
+			// while(*pointer != '\0') {
+			// 	*pointer ='\0';
+			// 	pointer++;
+			// }
 		}
 		else {
 			printf("Directory not found\n");
-                       	return 1;
+						return 1;
 		}
 	}
 	return 1;
@@ -154,14 +168,14 @@ alias three one
 */
 // recursive
 bool checkIfWordEndsAtName(char *name, char *word){
-	for (int i = 0; i < aliasIndex; i++) {
-		// initial check, start of cycle
-		if(strcmp(aliasTable.name[i], word) == 0){
-			if(strcmp(aliasTable.word[i], name) == 0){
+	map<string, string>::iterator it;
+	for(it = aliasMap.begin(); it != aliasMap.end(); ++it){
+		if(it->first == word){
+			if(it->second == name){
 				// cycle, invalid
 				return true;
 			}
-			return checkIfWordEndsAtName(aliasTable.word[i], name); // check if two ends at three
+			return checkIfWordEndsAtName(&it->second[0], name); // check if two ends at three
 		}
 	}
 	return false;
@@ -177,52 +191,65 @@ int runSetAlias(char *name, char *word) {
 	}
 
 	// loop through existing aliases
-	for (int i = 0; i < aliasIndex; i++) {
+	map<string, string>::iterator it;
+	for(it = aliasMap.begin(); it != aliasMap.end(); ++it){
 		// test if this combination already exists
-		if((strcmp(aliasTable.name[i], name) == 0) && (strcmp(aliasTable.word[i], word) == 0)){
+		if(it->first == name && it->second == word){
 			printf("Error, expansion of \"%s\" would create a loop.\n", name);
 			return 1;
-		}
-		// check if name/alias already exists, override if it does
-		else if(strcmp(aliasTable.name[i], name) == 0) {
-			strcpy(aliasTable.word[i], word);
+		}else if(it->first == name){
+			// check if name/alias already exists, override if it does
+			aliasMap[it->first] = word;
 			return 1;
 		}else if(checkIfWordEndsAtName(name, word) == true){
 			printf("Cycle.");
 			return 1;
 		}
 	}
-	// new alias
-	strcpy(aliasTable.name[aliasIndex], name);
-	strcpy(aliasTable.word[aliasIndex], word);
-	aliasIndex++;
 
+	// new alias
+	aliasMap[name] = word;
 	return 1;
 }
 
+int runPrintAlias(){
+	map<string, string>::iterator it;
+	for(it = aliasMap.begin(); it != aliasMap.end(); ++it){
+		cout << it->first << "=" << it->second << endl;
+	}
+}
+
+void unsetAlias(char* name){
+	aliasMap.erase(name);
+}
+
 int runSetEnv(char *variable, char *word){
-	// actually same word as variable should be okay
-	/* if(strcmp(variable, word) == 0){
-		// same
-		return 1;
-	} */
 	printf("Setting var name \"%s\".\n", variable);
-	for(int i = 0; i < varIndex; i++){
-		// override existing var
-		if(strcmp(varTable.var[i], variable) == 0) {
+	// loop through existing aliases
+	map<string, string>::iterator it;
+	for(it = envMap.begin(); it != envMap.end(); ++it){
+		if(it->first == variable){
 			printf("Override var \"%s\" to word \"%s\".\n", variable, word);
-			strcpy(varTable.word[i], word);
+			envMap[it->first] = word;
 			return 1;
 		}
 	}
 
 	printf("New var \"%s\" to word \"%s\".\n", variable, word);
-	// new alias
-	strcpy(varTable.var[varIndex], variable);
-	strcpy(varTable.word[varIndex], word);
-	varIndex++;
+	envMap[variable] = word;
 
 	return 1;
+}
+
+int runPrintVariable(){
+	map<string, string>::iterator it;
+	for(it = envMap.begin(); it != envMap.end(); ++it){
+		cout << it->first << "=" << it->second << endl;
+	}
+}
+
+void unsetVariable(char* variable){
+	envMap.erase(variable);
 }
 
 void runExampleCommand(){
