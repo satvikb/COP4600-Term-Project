@@ -34,15 +34,16 @@ void runExampleCommand();
 %union {char *string;}
 
 %start cmd_line
-%token <string> BYE CD STRING ALIAS UNALIAS SETENV UNSETENV PRINTENV EC END
+%token <string> BYE CD STRING ALIAS UNALIAS SETENV UNSETENV PRINTENV EC END CUSTOM_CMD
 
 %%
 cmd_line    :
 	BYE END 		                {exit(1); return 1; }
 	| CD STRING END        			{runCD($2); return 1;}
-	| SETENV STRING STRING END		{runSetEnv($2, $3); return 1;}
+	| SETENV STRING STRING END	{runSetEnv($2, $3); return 1;}
 	| ALIAS STRING STRING END		{runSetAlias($2, $3); return 1;}
-	| EC END					{runExampleCommand(); return 1;}
+	| EC END					          {runExampleCommand(); return 1;}
+	| CUSTOM_CMD END				    {printf("%s\n", "success"); return 1;}
 %%
 
 int yyerror(char *s) {

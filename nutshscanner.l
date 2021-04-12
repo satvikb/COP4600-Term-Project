@@ -3,8 +3,10 @@
 // This is to help students learn these specific capabilities, the code is by far not a complete nutshell by any means.
 // Only "alias name word", "cd word", and "bye" run.
 #include "nutshparser.tab.h"
-#include <string.h>
 #include "global.h"
+#include "dirent.h"
+#include <string.h>
+#include <unistd.h>
 
 //#define unput(c) {yytchar= (c); if(yytchar=='\n') {yylineno--; *yysptr++=yytchar;}
 char* subAliases(char* name){
@@ -23,8 +25,48 @@ bool ifAlias(char* name){
     }
     return false;
 }
-bool ifCmd(char* name){
-    
+bool addToCmdTable(char* arg){
+    if(arg[0] == '/') {
+        if( access( arg, X_OK ) == 0 ){
+            command cmd = { arg, 0, NULL, NULL, NULL };
+            commandTable.push_back(cmd);
+
+            return true;
+        } else {
+            return false;
+        }
+    } else {
+        char* path = strdup( varTable.word[3] );
+
+        char* token;
+
+        token = strtok(path, ":");
+        while(token != NULL) {            
+            DIR* d;
+            struct dirent *dir;
+            d = opendir(token);
+            while((dir = readdir(d)) != NULL) {
+                if(strcmp(arg, dir->d_name) == 0) {
+                    char* absPath = strdup(token);
+                    strcat(absPath, "/");
+                    strcat(absPath, arg);
+
+                    if( access( absPath, X_OK ) == 0 ){
+                        command cmd = { absPath, 0, NULL, NULL, NULL };
+                        commandTable.push_back(cmd);
+
+                        printf("%s\n", dir->d_name);
+                        return true;
+                    }
+                }
+            }
+            closedir(d);
+
+            token = strtok(NULL, ":");
+        }
+    }
+
+    return false;
 }
 %}
 %array
@@ -57,11 +99,13 @@ printenv            { return PRINTENV; }
                             for ( int i = strlen(subAliases(yytext)) - 1; i >= 0; --i )
                                 unput( yycopy[i] );
                             free( yycopy );
-                        } else {
-                            printf("yytext: %s\n", yytext);
-                            yylval.string = strdup(yytext);
-                            return STRING;
-                        };
+                    } else if(addToCmdTable(yytext)) {
+                        return CUSTOM_CMD; 
+                    } else {
+                        printf("yytext: %s\n", yytext);
+                        yylval.string = strdup(yytext);
+                        return STRING;
+                    };
                     }
 
 %%
