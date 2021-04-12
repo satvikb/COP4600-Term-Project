@@ -60,7 +60,7 @@ void printFileName(int fd);
 	}
 
 %start cmd_line
-%token <string> BYE CD STRING ALIAS UNALIAS SETENV UNSETENV PRINTENV END CUSTOM_CMD
+%token <string> BYE CD STRING ALIAS UNALIAS SETENV UNSETENV PRINTENV END CUSTOM_CMD EC
 %token PIPE "|"
 %token IN "<"
 %token OUT ">"
@@ -78,6 +78,7 @@ cmd_line    :
 	| ALIAS STRING STRING END		{runSetAlias($2, $3); return 1;}
 	| ALIAS END						{runPrintAlias(); return 1;}
 	| UNALIAS STRING END			{unsetAlias($2); return 1;}
+	| EC END						{runExampleCommand(); return 1;}
 	| CUSTOM_CMD arg_list END		{
 										printf("%s\n", $1); 
 										
@@ -256,10 +257,10 @@ void runExampleCommand(){
 	command start = { .commandName = "/bin/ls"};
 	command cat = { .commandName = "/bin/cat"};
 	vector<string> catArgs; catArgs.push_back("Makefile");
-	// cat.args = catArgs;
+	cat.args = catArgs;
 
 	command grep = { .commandName = "/bin/grep"};
-	vector<string> grepArgs; grepArgs.push_back("shell");
+	vector<string> grepArgs; grepArgs.push_back("rm");
 	grep.args = grepArgs;
 
 	commandTable.push_back(start);
@@ -300,28 +301,13 @@ int runCommandTable(struct vector<command> commandTable){
 	// initialize all pipes (just do pipe())
 	for(int i = 0; i < commandTable.size(); i++){
 		command cmd = commandTable[i];
-		// pipe(pipes[INPUT(i)]);
 		pipe(pipes[i]);
 	}
-	
-	// cout << "PRINTING PIPES " << validCommandCount << endl;
-	// // print pipes for debug
-	// for(int i = 0; i < validCommandCount; i++){
-	// 	command cmd = commandTable[i];
-	// 	bool lastElement = i == validCommandCount-1;
-	// 	// cout << "[" << cmd.commandName << "]" << " Child. Input pipe: " << pipes[INPUT(i)][0] << "/" << pipes[INPUT(i)][1] << ". Last cmd: " << lastElement << endl;
-	// 	cout << "[" << cmd.commandName << "]" << " Child. Output pipe: " << pipes[OUTPUT(i)][0] << "/" << pipes[OUTPUT(i)][1] << ". Last cmd: " << lastElement << endl;
-
-	// 	// printFileName(pipes[INPUT(i)][0]);
-	// 	// printFileName(pipes[INPUT(i)][1]);
-	// 	printFileName(pipes[OUTPUT(i)][0]);
-	// 	printFileName(pipes[OUTPUT(i)][1]);
-
-	// }
 	
 	// 3rd loop - execute commands, deal with actual files here
 	for(int i = 0; i < validCommandCount; i++){
 		command cmd = commandTable[i];
+		cout << "forking COMAND" << cmd.commandName << endl;
 
 		if(fork() == 0){
 			// execute command
@@ -343,22 +329,30 @@ int runCommandTable(struct vector<command> commandTable){
 			bool firstCommand = i == 0;
 			bool lastCommand = i == validCommandCount - 1;
 
-			if(firstCommand){
+			
+			if(firstCommand && !lastCommand){
 				// only assign stdout
-				dup2(pipes[0][WRITE_END], STDOUT_FILENO);
+				cout << "bye " << lastCommand << endl;
+				dup2(pipes[i][WRITE_END], STDOUT_FILENO);
 			}
 			if(lastCommand){
+				// assign to stdout
+				dup2(STDOUT_FILENO, pipes[i][READ_END]);
+				cout << "we back" << endl;
+
 				// dont like having a special case like this
+				cout << "LAST COMAND" << endl;
 				if(validCommandCount <= 1){
-					cout << "ONLY ONE COMMAND" << validCommandCount << endl;
 					dup2(pipes[0][READ_END], STDIN_FILENO);
+					// dup2(STDIN_FILENO, pipes[0][READ_END]);
+					cout << "ONLY ONE COMMAND" << validCommandCount << endl;
 				}else{
 					cout << "assigning input to last command" << cmd.commandName << endl;
 					dup2(pipes[i-1][READ_END], STDIN_FILENO);
 				}
-				// assign to stdout
-				dup2(STDOUT_FILENO, pipes[i][READ_END]);
-				
+
+				close(pipes[i][READ_END]);
+				close(pipes[i][WRITE_END]);
 			}
 			if(!(firstCommand || lastCommand)){
 				// middle command
@@ -369,8 +363,11 @@ int runCommandTable(struct vector<command> commandTable){
 			}
 
 			cout << "CLOSING CHILD PIPES shell" << endl;
-			close(pipes[i][READ_END]);
-			close(pipes[i][WRITE_END]);
+			if(i > 0){
+				close(pipes[i-1][READ_END]);
+				close(pipes[i-1][WRITE_END]);
+			}
+			
 
 			if (execv(argv[0], (char **)argv) < 0){
 				cout << "ERROR" << errno << endl;

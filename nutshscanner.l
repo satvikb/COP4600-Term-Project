@@ -88,6 +88,7 @@ unalias             { return UNALIAS; }
 setenv		        { return SETENV; }
 unsetenv            { return UNSETENV; }
 printenv            { return PRINTENV; }
+ec                  {return EC;}
 "\n"		        { return END; }
 [\"]                { BEGIN(string_condition); }
 {CHAR}+             {
