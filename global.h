@@ -3,6 +3,10 @@
 #include <map>
 #include <iostream>
 #include <errno.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <unistd.h>
 using namespace std;
 
 struct command {

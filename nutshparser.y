@@ -19,8 +19,8 @@ chdir (path) - change working directory
 #include <sys/wait.h>
 #include "global.h"
 
-#define READ_END 0
-#define WRITE_END 1
+#define OUTPUT_END 0
+#define INPUT_END 1
 
 // #define INPUT(i) i*2
 #define OUTPUT(i) i //(i*2)+1
@@ -253,14 +253,17 @@ void unsetVariable(char* variable){
 }
 
 void runExampleCommand(){
+	commandTable.clear();
 	command start = { .commandName = "/bin/ls"};
 	command cat = { .commandName = "/bin/cat"};
 	vector<string> catArgs; catArgs.push_back("Makefile");
 	cat.args = catArgs;
+	// cat.outputFileName = "testOut.txt";
 
 	command grep = { .commandName = "/bin/grep"};
-	vector<string> grepArgs; grepArgs.push_back("rm");
+	vector<string> grepArgs; grepArgs.push_back("C");
 	grep.args = grepArgs;
+	grep.outputFileName = "testOut2.txt";
 
 	commandTable.push_back(start);
 	commandTable.push_back(cat);
@@ -317,40 +320,78 @@ int runCommandTable(struct vector<command> commandTable){
 			bool lastCommand = i == validCommandCount - 1;
 			
 			if(firstCommand && !lastCommand){
-				// only assign stdout
-				dup2(pipes[i][WRITE_END], STDOUT_FILENO);
+				cout << "TO STDOUT" << endl;
+				// only assign stdout to write to pipe
+				dup2(pipes[i][INPUT_END], STDOUT_FILENO);
 			}
-			if(lastCommand){
-				// assign to stdout
-				dup2(STDOUT_FILENO, pipes[i][READ_END]);
+			if(lastCommand && !firstCommand){
+				dup2(STDOUT_FILENO, pipes[i][OUTPUT_END]);
 
-				// dont like having a special case like this
-				if(validCommandCount <= 1){
-					dup2(pipes[0][READ_END], STDIN_FILENO);
-				}else{
-					dup2(pipes[i-1][READ_END], STDIN_FILENO);
-				}
+				// stdin becomes output of previous pipe
+				dup2(pipes[i-1][OUTPUT_END], STDIN_FILENO);
 
-				// because we close on i+1, close i on the last command
-				close(pipes[i][READ_END]);
-				close(pipes[i][WRITE_END]);
+				// // dont like having a special case like this
+				// if(validCommandCount <= 1){
+				// 	// TODO it works without this?
+				// 	// first and last command, make the read end of the pipe (for the same first cmd) the input to the command
+				// 	dup2(pipes[0][OUTPUT_END], STDIN_FILENO);
+				// }else{
+				// 	dup2(pipes[i-1][OUTPUT_END], STDIN_FILENO);
+				// }
+
 			}
 			if(!(firstCommand || lastCommand)){
+				// REMEMBER THIS DOES NOT RUN IN TWO COMMAND CONFIG
+				cout << "MIDDLE COMMAND " << cmd.commandName << endl;
 				// middle command
 				// assign stdin to be output from previous command
-				dup2(pipes[i-1][READ_END], STDIN_FILENO);
+				dup2(pipes[i-1][OUTPUT_END], STDIN_FILENO);
 				// assign cmd stdout to be current pipe write
-				dup2(pipes[i][WRITE_END], STDOUT_FILENO);
+				dup2(pipes[i][INPUT_END], STDOUT_FILENO);
+			}
+			if(lastCommand && !cmd.outputFileName.empty()){
+				cout << "BACK TO STDOUT" << endl;
+				cout << "OUTPUT TO FILE" << endl;
+
+				// write to file https://stackoverflow.com/questions/8516823/redirecting-output-to-a-file-in-c
+				int out = open(&cmd.outputFileName[0], O_RDWR|O_CREAT|O_APPEND, 0600);
+				if (-1 == out) { 
+					perror("error opening output file"); 
+					return 255; 
+				}
+
+				// int save_out = dup(STDOUT_FILENO);
+
+				dup2(out, STDOUT_FILENO);
+				// dup2(out, pipes[i][OUTPUT_END]);
+				// dup2(out, pipes[i][INPUT_END]);
+				// dup2(pipes[i][INPUT_END], out);
+
+				// fflush(stdout);
+				close(out);
+
+				// dup2(save_out, STDOUT_FILENO);
+				// close(save_out);
 			}
 
+			if(lastCommand && !firstCommand){
+				
+				// because we close on i+1, close i on the last command
+				close(pipes[i][OUTPUT_END]);
+				close(pipes[i][INPUT_END]);
+			}
 			// wait until i+1 iteration to close pipes on the i iteration since we use pipes[i-1] above
 			if(i > 0){
-				close(pipes[i-1][READ_END]);
-				close(pipes[i-1][WRITE_END]);
+				close(pipes[i-1][OUTPUT_END]);
+				close(pipes[i-1][INPUT_END]);
+			}else if(validCommandCount == 1){
+				close(pipes[i][OUTPUT_END]);
+				close(pipes[i][INPUT_END]);
 			}
 
 			if (execv(argv[0], (char **)argv) < 0){
 				cout << "ERROR" << errno << endl;
+				// TODO purge command here and go to next input, maybe ensure all pipes are closed
 				exit(0);
 			}
 		}
@@ -358,8 +399,8 @@ int runCommandTable(struct vector<command> commandTable){
 
 	for(int i = 0; i < commandTable.size(); i++){
 		command cmd = commandTable[i];
-		close(pipes[i][READ_END]);
-		close(pipes[i][WRITE_END]);
+		close(pipes[i][OUTPUT_END]);
+		close(pipes[i][INPUT_END]);
 	}
 	
 	// TODO handle the & and background processing. do that here (at the command level, race conditions between commands?)? or at the table level?
@@ -368,6 +409,7 @@ int runCommandTable(struct vector<command> commandTable){
 		wait(&status);
 	
 	// reset commandTable here
+	// TODO this doesnt work? might only be when outputting to file?
 	commandTable.clear();
 	return 0;
 }
