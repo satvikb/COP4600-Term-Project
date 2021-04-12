@@ -42,7 +42,6 @@ void unsetVariable(char* variable);
 int runCommandTable(struct vector<command> commandTable);
 
 void runExampleCommand();
-void printFileName(int fd);
 %}
 
 %code requires {
@@ -267,20 +266,9 @@ void runExampleCommand(){
 	commandTable.push_back(cat);
 	commandTable.push_back(grep);
 
-
-	printf("RUNNING COMMAND TABLE\n");
 	runCommandTable(commandTable);
 }
 
-void printFileName(int fd){
-	enum { BUFFERSIZE = 1024 };
-	char buf1[BUFFERSIZE];
-	string path = "/proc/self/fd/";
-	path += std::to_string(fd);
-	ssize_t len1 = readlink(path.c_str(), buf1, sizeof(buf1));
-	if (len1 != -1) {buf1[len1] = '\0';}
-	cout << fd << " FILE LINK " << buf1 << endl;
-}
 // ASSUMPTION: a command can only do one of either Output to file or Redirect into pipe, Not both.
 // ^ so a command must end with | or > (if not using &1)
 
@@ -307,7 +295,6 @@ int runCommandTable(struct vector<command> commandTable){
 	// 3rd loop - execute commands, deal with actual files here
 	for(int i = 0; i < validCommandCount; i++){
 		command cmd = commandTable[i];
-		cout << "forking COMAND" << cmd.commandName << endl;
 
 		if(fork() == 0){
 			// execute command
@@ -328,29 +315,23 @@ int runCommandTable(struct vector<command> commandTable){
 
 			bool firstCommand = i == 0;
 			bool lastCommand = i == validCommandCount - 1;
-
 			
 			if(firstCommand && !lastCommand){
 				// only assign stdout
-				cout << "bye " << lastCommand << endl;
 				dup2(pipes[i][WRITE_END], STDOUT_FILENO);
 			}
 			if(lastCommand){
 				// assign to stdout
 				dup2(STDOUT_FILENO, pipes[i][READ_END]);
-				cout << "we back" << endl;
 
 				// dont like having a special case like this
-				cout << "LAST COMAND" << endl;
 				if(validCommandCount <= 1){
 					dup2(pipes[0][READ_END], STDIN_FILENO);
-					// dup2(STDIN_FILENO, pipes[0][READ_END]);
-					cout << "ONLY ONE COMMAND" << validCommandCount << endl;
 				}else{
-					cout << "assigning input to last command" << cmd.commandName << endl;
 					dup2(pipes[i-1][READ_END], STDIN_FILENO);
 				}
 
+				// because we close on i+1, close i on the last command
 				close(pipes[i][READ_END]);
 				close(pipes[i][WRITE_END]);
 			}
@@ -362,12 +343,11 @@ int runCommandTable(struct vector<command> commandTable){
 				dup2(pipes[i][WRITE_END], STDOUT_FILENO);
 			}
 
-			cout << "CLOSING CHILD PIPES shell" << endl;
+			// wait until i+1 iteration to close pipes on the i iteration since we use pipes[i-1] above
 			if(i > 0){
 				close(pipes[i-1][READ_END]);
 				close(pipes[i-1][WRITE_END]);
 			}
-			
 
 			if (execv(argv[0], (char **)argv) < 0){
 				cout << "ERROR" << errno << endl;
@@ -376,28 +356,19 @@ int runCommandTable(struct vector<command> commandTable){
 		}
 	}
 
-
-	std::cout << "Closing all pipes" << endl;
 	for(int i = 0; i < commandTable.size(); i++){
 		command cmd = commandTable[i];
 		close(pipes[i][READ_END]);
 		close(pipes[i][WRITE_END]);
-
-		// close(pipes[INPUT(i)][READ_END]);
-		// close(pipes[INPUT(i)][WRITE_END]);
-		// close(pipes[OUTPUT(i-1)][READ_END]);
-		// close(pipes[OUTPUT(i-1)][WRITE_END]);
-
 	}
 	
-	std::cout << "Waiting for all commands to finish " << validCommandCount << endl;
 	// TODO handle the & and background processing. do that here (at the command level, race conditions between commands?)? or at the table level?
 	int status;
 	for (int i = 0; i < validCommandCount; i++)
 		wait(&status);
-
 	
 	// reset commandTable here
+	commandTable.clear();
 	return 0;
 }
 
