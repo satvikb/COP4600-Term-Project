@@ -10,20 +10,14 @@
 
 //#define unput(c) {yytchar= (c); if(yytchar=='\n') {yylineno--; *yysptr++=yytchar;}
 char* subAliases(char* name){
-    for (int i = 0; i < aliasIndex; i++) {
-        if(strcmp(aliasTable.name[i], name) == 0) {
-            return aliasTable.word[i];
-        }
+    auto sub = aliasMap.find(name);
+    if(sub != aliasMap.end()){
+        return &sub->second[0];
     }
     return name;
 }
 bool ifAlias(char* name){
-    for (int i = 0; i < aliasIndex; i++) {
-        if(strcmp(aliasTable.name[i], name) == 0) {
-            return true;
-        }
-    }
-    return false;
+    return aliasMap.count(name) > 0;
 }
 bool ifCmd(char* arg){
     if(arg[0] == '/') {
@@ -38,7 +32,7 @@ bool ifCmd(char* arg){
             return false;
         }
     } else {
-        char* path = strdup( varTable.word[3] );
+        char* path = strdup( &envMap["PATH"][0]);
 
         char* token;
 
