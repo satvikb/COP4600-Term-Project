@@ -114,7 +114,7 @@ cmd_line    	:
 																			}
 
 																			
-																			runCommandTable(false, true, true, "error.txt", false);
+																			runCommandTable(false, true, false, "error.txt", false);
 																			return 1;
 																		}
 
@@ -339,10 +339,6 @@ void unsetVariable(char* variable){
 	envMap.erase(variable);
 }
 
-void runPrintCurrentDirectory(){
-	cout << envMap["PWD"] << endl;
-}
-
 void printFileName(int fd){
 	enum { BUFFERSIZE = 1024 };
 	char buf1[BUFFERSIZE];
@@ -359,18 +355,19 @@ void printFileName(int fd){
 // ASSUMPTION: any command/multiple commands can have input files with <.
 // ^ the spec however, only shows one < at the end of the line?
 int runCommandTable(bool appendOutput, bool redirectStdErr, bool stdErrToStdOut, string errFileOutput, bool backgroundProcessing){
-	// if(commandTable.size() == 1){
-	// 	// TESTING
-	// 	commandTable[0].inputFileName = "input.txt";
-	// 	commandTable[0].outputFileName = "e.txt";
-	// 	cout << "assign output file" << endl;
-	// }
+	if(commandTable.size() == 1){
+		// TESTING
+		commandTable[0].inputFileName = "input.txt";
+		commandTable[0].outputFileName = "e.txt";
+		cout << "assign output file" << endl;
+	}
 
 	int pipes[commandTable.size()-1][2];
 
 
 	int saved_stdout = dup(STDOUT_FILENO);
 	int saved_stdin = dup(STDIN_FILENO);
+	int saved_stderr = dup(STDERR_FILENO);
 
 	if(redirectStdErr){
 		if(stdErrToStdOut){
@@ -522,8 +519,8 @@ int runCommandTable(bool appendOutput, bool redirectStdErr, bool stdErrToStdOut,
 			// 	// close(pipes[i][OUTPUT_END]);
 			// 	close(pipes[i][INPUT_END]);
 			// }
-			// close(saved_stdout);
-			// close(saved_stdin);
+			close(saved_stdout);
+			close(saved_stdin);
 			for(int k = 0; k < sizeof(pipes) / sizeof(pipes[0]); k++){
 				close(pipes[k][OUTPUT_END]);
 				close(pipes[k][INPUT_END]);
@@ -548,14 +545,20 @@ int runCommandTable(bool appendOutput, bool redirectStdErr, bool stdErrToStdOut,
 		close(pipes[k][INPUT_END]);
 	}
 
-	// close(saved_stdout);
-	// close(saved_stdin);
+
 	// cout << "waiting  " << endl;
 	// TODO handle the & and background processing. do that here (at the command level, race conditions between commands?)? or at the table level?
 	int status;
 	for (int i = 0; i < validCommandCount; i++)
 		wait(&status);
-	
+
+	// put everything back. is this needed?
+	dup2(saved_stdout, STDOUT_FILENO);
+	dup2(saved_stdin, STDIN_FILENO);
+	dup2(saved_stderr, STDERR_FILENO);
+
+	close(saved_stdout);
+	close(saved_stdin);
 	// reset commandTable here
 	// TODO this doesnt work? might only be when outputting to file?
 	commandTable.clear();
