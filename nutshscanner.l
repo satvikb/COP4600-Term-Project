@@ -69,10 +69,19 @@ CHAR            [.A-Za-z0-9!\/_-][.A-Za-z0-9!\/_-]*
 ANYCHAR            [)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~ -][)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~ -]*
 
 %x string_condition
+%x cmd_condition
 %%
 
 <string_condition>{ANYCHAR}+     { yylval.string = strdup(yytext); return STRING;}
 <string_condition>[\"]          {BEGIN(INITIAL);}
+
+<cmd_condition>{CHAR}+          {                                   
+                                    //printf("yytext: %s\n", yytext);
+                                    yylval.string = strdup(yytext);
+                                    return STRING;                            
+                                }     
+<cmd_condition>"\n"		        { BEGIN(INITIAL); return END; }
+<cmd_condition>"|"              { BEGIN(INITIAL); return PIPE; }
 
 [ \t\r]		            { }
 bye                 { return BYE; }
@@ -96,6 +105,7 @@ ec                  { return EC; }
                                 free( yycopy );
                         } else if(ifCmd(yytext)) {
                             //printf("yytext: %s\n", yytext);
+                            BEGIN(cmd_condition);
                             yylval.string = strdup(yytext);
                             return CUSTOM_CMD; 
                         } else {
