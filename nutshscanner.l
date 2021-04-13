@@ -1,7 +1,4 @@
 %{
-// This is ONLY a demo micro-shell whose purpose is to illustrate the need for and how to handle nested alias substitutions and how to use Flex start conditions
-// This is to help students learn these specific capabilities, the code is by far not a complete nutshell by any means.
-// Only "alias name word", "cd word", and "bye" run.
 #include "nutshparser.tab.h"
 #include "global.h"
 #include "dirent.h"
@@ -70,6 +67,7 @@ ANYCHAR            [)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~ -][)(*&%$#@!`;,\.a-zA-Z0-9'/*_
 
 %x string_condition
 %x cmd_condition
+%x environment_condition
 %%
 
 <string_condition>{ANYCHAR}+     { yylval.string = strdup(yytext); return STRING;}
@@ -83,17 +81,24 @@ ANYCHAR            [)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~ -][)(*&%$#@!`;,\.a-zA-Z0-9'/*_
 <cmd_condition>"\n"		        { BEGIN(INITIAL); return END; }
 <cmd_condition>"|"              { BEGIN(INITIAL); return PIPE; }
 
+<environment_condition>{CHAR}+  {                                   
+                                    //printf("yytext: %s\n", yytext);
+                                    yylval.string = strdup(yytext);
+                                    return STRING;                            
+                                }
+<environment_condition>"}"      { BEGIN(INITIAL); }
+
 [ \t\r]		            { }
 bye                 { return BYE; }
-cd		            { return CD; }
-alias		        { return ALIAS; }
-unalias             { return UNALIAS; }
-setenv		        { return SETENV; }
-unsetenv            { return UNSETENV; }
-printenv            { return PRINTENV; }
-ec                  { return EC; }
+cd		            { BEGIN(cmd_condition); return CD; }
+alias		        { BEGIN(cmd_condition); return ALIAS; }
+unalias             { BEGIN(cmd_condition); return UNALIAS; }
+setenv		        { BEGIN(cmd_condition); return SETENV; }
+unsetenv            { BEGIN(cmd_condition); return UNSETENV; }
+printenv            { BEGIN(cmd_condition); return PRINTENV; }
 "\n"		        { return END; }
 "|"                 { return PIPE; }
+"${"                { BEGIN(environment_condition); }
 [\"]                { BEGIN(string_condition); }
 {CHAR}+             {
                         if(ifAlias(yytext)) {
