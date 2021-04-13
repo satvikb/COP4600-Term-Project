@@ -318,7 +318,7 @@ void runExampleCommand(){
 	command tail = { .commandName = "/bin/tail"};
 	vector<string> arg4; arg4.push_back("-2");
 	tail.args = arg4;
-	tail.outputFileName = "testOut3.txt";
+	// tail.outputFileName = "testOut3.txt";
 
 	command rev = { .commandName = "/bin/rev"};
 
@@ -327,13 +327,14 @@ void runExampleCommand(){
 	head.args = arg5;
 
 	command less = { .commandName = "/bin/head"};
+	less.outputFileName = "testOut3.txt";
 
 	commandTable.push_back(ls);
 	commandTable.push_back(grep);
 	commandTable.push_back(sort);
 	commandTable.push_back(tail);
-	// commandTable.push_back(rev);
-	// commandTable.push_back(less);
+	commandTable.push_back(rev);
+	commandTable.push_back(less);
 	runCommandTable(commandTable);
 }
 
@@ -412,7 +413,7 @@ int runCommandTable(struct vector<command> commandTable){
 			}
 			
 			if(!(firstCommand || lastCommand)){
-				cout << "middle " << cmd.commandName << endl;
+				// cout << "middle " << cmd.commandName << endl;
 				// input is output end pipe from previous command
 				if(dup2(pipes[i-1][OUTPUT_END], STDIN_FILENO) < 0){
 					cout << "ERROR" << endl;
@@ -426,7 +427,7 @@ int runCommandTable(struct vector<command> commandTable){
 
 				// REMEMBER THIS DOES NOT RUN IN TWO COMMAND CONFIG
 				// middle command
-				cout << "Middle " << cmd.commandName << endl;
+				// cout << "Middle " << cmd.commandName << endl;
 			}
 			
 			if(lastCommand && !firstCommand){
@@ -472,18 +473,18 @@ int runCommandTable(struct vector<command> commandTable){
 			// 	// close(pipes[i][OUTPUT_END]);
 			// 	close(pipes[i][INPUT_END]);
 			// }
-			close(saved_stdout);
-			close(saved_stdin);
+			// close(saved_stdout);
+			// close(saved_stdin);
 			for(int k = 0; k < sizeof(pipes) / sizeof(pipes[0]); k++){
 				close(pipes[k][OUTPUT_END]);
 				close(pipes[k][INPUT_END]);
 			}
 
-			cout << "Running " << cmd.commandName << ". Input from: ";
-			printFileName(STDIN_FILENO);
-			cout << ". Output to: ";
-			printFileName(STDOUT_FILENO);
-			cout << endl;
+			// cout << "Running " << cmd.commandName << ". Input from: ";
+			// printFileName(STDIN_FILENO);
+			// cout << ". Output to: ";
+			// printFileName(STDOUT_FILENO);
+			// cout << endl;
 
 			if (execv(argv[0], (char **)argv) < 0){
 				cout << "ERROR" << errno << endl;
@@ -498,8 +499,8 @@ int runCommandTable(struct vector<command> commandTable){
 		close(pipes[k][INPUT_END]);
 	}
 
-	close(saved_stdout);
-	close(saved_stdin);
+	// close(saved_stdout);
+	// close(saved_stdin);
 	cout << "waiting  " << endl;
 	// TODO handle the & and background processing. do that here (at the command level, race conditions between commands?)? or at the table level?
 	int status;
