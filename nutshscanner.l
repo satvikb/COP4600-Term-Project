@@ -21,7 +21,7 @@ bool ifAlias(char* name){
 }
 bool ifCmd(char* arg){
     if(arg[0] == '/') {
-        if( access( arg, X_OK ) == 0 ){
+        if( access( arg, X_OK ) == 0){
             // command cmd;
             // cmd.commandName = arg;
             
@@ -47,14 +47,10 @@ bool ifCmd(char* arg){
                     strcat(absPath, "/");
                     strcat(absPath, arg);
 
-                    if( access( absPath, X_OK ) == 0 ){
-                        // command cmd;
-                        // cmd.commandName = absPath;
-                        // commandTable.push_back(cmd);
-
+                    if( access( absPath, X_OK ) == 0 && (dir->d_type == DT_REG) ){
                         strcpy(arg, absPath);
 
-                        // printf("%s\n", dir->d_name);
+                        printf("%s\n", dir->d_name);
                         return true;
                     }
                 }
@@ -82,7 +78,7 @@ ANYCHAR            [)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~ -][)(*&%$#@!`;,\.a-zA-Z0-9'/*_
 
 [ \t\r]		            { }
 bye                 { return BYE; }
-cd		            { return CD;}
+cd		            { return CD; }
 alias		        { return ALIAS; }
 unalias             { return UNALIAS; }
 setenv		        { return SETENV; }
@@ -90,6 +86,7 @@ unsetenv            { return UNSETENV; }
 printenv            { return PRINTENV; }
 ec                  {return EC;}
 "\n"		        { return END; }
+"|"                 { return PIPE; }
 [\"]                { BEGIN(string_condition); }
 {CHAR}+             {
                         if(ifAlias(yytext)) {
@@ -100,10 +97,11 @@ ec                  {return EC;}
                                     unput( yycopy[i] );
                                 free( yycopy );
                         } else if(ifCmd(yytext)) {
+                            printf("yytext: %s\n", yytext);
                             yylval.string = strdup(yytext);
                             return CUSTOM_CMD; 
                         } else {
-                            //printf("yytext: %s\n", yytext);
+                            printf("yytext: %s\n", yytext);
                             yylval.string = strdup(yytext);
                             return STRING;
                         };

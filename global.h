@@ -18,9 +18,26 @@ struct command {
    string outputFileName;
 };
 
-void updateParentDirectories(string path);
+struct list {
+	char args[128][100];
+	int size = 0;
+};
+
+struct nestedCmd {
+   list* args = NULL;
+   char name[128];
+};
+
+struct pipedCmds {
+   vector<nestedCmd*> commands;
+};
+
+list* newArgList();
+pipedCmds* newPipedCmdList();
+pipedCmds* appendToCmdList(pipedCmds* p, char* name, list* args);
 
 char* subAliases(char* name);
+void updateParentDirectories(string path);
 
 extern map<string,string> envMap;
 extern map<string,string> aliasMap;
