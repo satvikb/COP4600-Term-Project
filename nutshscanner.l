@@ -49,8 +49,6 @@ bool ifCmd(char* arg){
 
                     if( access( absPath, X_OK ) == 0 && (dir->d_type == DT_REG) ){
                         strcpy(arg, absPath);
-
-                        printf("%s\n", dir->d_name);
                         return true;
                     }
                 }
@@ -84,7 +82,7 @@ unalias             { return UNALIAS; }
 setenv		        { return SETENV; }
 unsetenv            { return UNSETENV; }
 printenv            { return PRINTENV; }
-ec                  {return EC;}
+ec                  { return EC; }
 "\n"		        { return END; }
 "|"                 { return PIPE; }
 [\"]                { BEGIN(string_condition); }
@@ -97,11 +95,11 @@ ec                  {return EC;}
                                     unput( yycopy[i] );
                                 free( yycopy );
                         } else if(ifCmd(yytext)) {
-                            printf("yytext: %s\n", yytext);
+                            //printf("yytext: %s\n", yytext);
                             yylval.string = strdup(yytext);
                             return CUSTOM_CMD; 
                         } else {
-                            printf("yytext: %s\n", yytext);
+                            //printf("yytext: %s\n", yytext);
                             yylval.string = strdup(yytext);
                             return STRING;
                         };

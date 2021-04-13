@@ -92,9 +92,34 @@ cmd_line    	:
 																			// 	}
 																			// }
 																			// printf("\n");
+																			
+																			vector<string> mainArgs;
+																			for(int i = 0; i < ($2)->size; i++) {
+																				mainArgs.push_back($2->args[i]);
+																			}
+																			command mainCommand;
+																			mainCommand.commandName = $1;
+																			mainCommand.args = mainArgs;
 
 																			
+																			commandTable.push_back(mainCommand);
+
+																			for(int i = 0; i < $3->commands.size(); i++) {
+																				command cmd;
+																				cmd.commandName = $3->commands[i]->name;
+																				printf("%s\n", cmd.commandName);
+
+																				vector<string> args;
+																				for(int j = 0; j < $3->commands[i]->args->size; j++) {
+																					args.push_back($3->commands[i]->args->args[j]);
+																				}
+
+																				cmd.args = args;
+																				commandTable.push_back(cmd);
+																			}
+
 																			
+																			runCommandTable(commandTable);
 																			return 1;
 																		}
 
