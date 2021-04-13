@@ -3,6 +3,12 @@
 #include <map>
 #include <iostream>
 #include <errno.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <pwd.h>
+#include <cstddef> 
 using namespace std;
 
 struct command {
@@ -31,6 +37,7 @@ pipedCmds* newPipedCmdList();
 pipedCmds* appendToCmdList(pipedCmds* p, char* name, list* args);
 
 char* subAliases(char* name);
+void updateParentDirectories(string path);
 
 extern map<string,string> envMap;
 extern map<string,string> aliasMap;
