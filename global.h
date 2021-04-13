@@ -16,6 +16,7 @@ struct command {
    vector<string> args;
 	string inputFileName;
    string outputFileName;
+   bool outputAppend;
 };
 
 struct list {

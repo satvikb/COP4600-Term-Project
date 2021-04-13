@@ -1,0 +1,3 @@
+Running /bin/tail. Input from: pipe:[41057]. Output to: /mnt/c/Users/Satvik/Documents/College/Spring 2021/COP/Nutshell/COP4600-Term-Project/testOut3.txt
+Middle /bin/grep
+Running /bin/grep. Input from: pipe:[41055]. Output to: pipe:[41056]
