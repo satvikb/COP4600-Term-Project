@@ -42,4 +42,5 @@ void updateParentDirectories(string path);
 
 extern map<string,string> envMap;
 extern map<string,string> aliasMap;
+extern string CURRENT_DIR;
 extern struct vector<command> commandTable;

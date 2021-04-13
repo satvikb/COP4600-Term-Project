@@ -10,6 +10,8 @@ extern int yyparse (void);
 
 char* getcwd(char *buf, size_t size);
 void buildEnvs();
+void updatePrompt(string folderName);
+
 // char* getCurrentDirectory();
 const char* getHomeDirectory();
 
@@ -20,7 +22,7 @@ int main()
     system("clear");
     while(1)
     {
-        printf("[%s]>> ", &envMap["PROMPT"][0]);
+        printf("%s$ ", &envMap["PROMPT"][0]);
         yyparse();
     }
 
@@ -37,10 +39,12 @@ void buildEnvs(){
     char cwd[PATH_MAX]; // PATH_MAX = 4096
     getcwd(cwd, sizeof(cwd)); // put the current working directory into cwd
    
+    const char* homeDir = getHomeDirectory();
+
     envMap["PWD"] = cwd;
     envMap["PATH"] = ".:/bin:/usr/bin";
-    envMap["HOME"] = getHomeDirectory();
-    envMap["PROMPT"] = prefix;
+    envMap["HOME"] = homeDir;
+    updateParentDirectories(cwd);
 }
 
 // char* getCurrentDirectory(){
@@ -57,11 +61,21 @@ const char* getHomeDirectory(){
 }
 
 void updateParentDirectories(string path){
-    cout << "UPDATING PARENT " << path << endl;
     // http://www.cplusplus.com/reference/string/string/find_last_of/
     size_t found = path.find_last_of("/\\");
     string parent = path.substr(0,found);
 
-    aliasMap["."] = path;
-    aliasMap[".."] = parent;
+    updatePrompt(path.substr(found+1));
+    CURRENT_DIR = path;
+    // aliasMap["."] = path;
+    // aliasMap[".."] = parent;
+}
+
+void updatePrompt(string folderName){
+    struct passwd *p = getpwuid(getuid());
+    char prefix[128] = "";
+    strcat(prefix, p->pw_name);
+    string pre = prefix;
+    pre = pre + ":" +folderName;
+    envMap["PROMPT"] = pre;
 }
