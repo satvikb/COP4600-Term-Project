@@ -35,8 +35,7 @@ int runSetEnv(char *variable, char *word);
 int runPrintVariable();
 void unsetVariable(char* variable);
 
-int runCommandTable();
-
+int runCommandTable(bool appendOutput, bool redirectStdErr, bool stdErrToStdOut, string errFileOutput, bool backgroundProcessing);
 void runExampleCommand();
 void printFileName(int fd);
 %}
@@ -115,7 +114,7 @@ cmd_line    	:
 																			}
 
 																			
-																			runCommandTable();
+																			runCommandTable(false, true, true, "error.txt", false);
 																			return 1;
 																		}
 
@@ -359,13 +358,13 @@ void printFileName(int fd){
 
 // ASSUMPTION: any command/multiple commands can have input files with <.
 // ^ the spec however, only shows one < at the end of the line?
-int runCommandTable(){
-	if(commandTable.size() == 1){
-		// TESTING
-		commandTable[0].inputFileName = "input.txt";
-		commandTable[0].outputFileName = "e.txt";
-		cout << "assign output file" << endl;
-	}
+int runCommandTable(bool appendOutput, bool redirectStdErr, bool stdErrToStdOut, string errFileOutput, bool backgroundProcessing){
+	// if(commandTable.size() == 1){
+	// 	// TESTING
+	// 	commandTable[0].inputFileName = "input.txt";
+	// 	commandTable[0].outputFileName = "e.txt";
+	// 	cout << "assign output file" << endl;
+	// }
 
 	int pipes[commandTable.size()-1][2];
 
@@ -373,6 +372,24 @@ int runCommandTable(){
 	int saved_stdout = dup(STDOUT_FILENO);
 	int saved_stdin = dup(STDIN_FILENO);
 
+	if(redirectStdErr){
+		if(stdErrToStdOut){
+			dup2(STDOUT_FILENO, STDERR_FILENO);
+		}else{
+			// output to file
+			int	flags = O_RDWR|O_CREAT|O_APPEND;
+			int out = open(&errFileOutput[0], flags, 0600);
+			if (-1 == out) { 
+				perror("error opening error output file"); 
+				return 255; 
+			}
+
+			dup2(out, STDERR_FILENO);
+			// TODO it works with and without this, keep?
+			fflush(stderr);
+			close(out);
+		}
+	}
 	/*
 		pipes = 
 		[
@@ -380,7 +397,8 @@ int runCommandTable(){
 			Output pipe for 2: [9,10]
 		]
 	*/
-
+	perror("testing error");
+	cout << "Normal outptu" << endl;
 	int validCommandCount = commandTable.size();
 	// 1st loop through command table
 	// initialize all pipes (just do pipe())
@@ -471,7 +489,13 @@ int runCommandTable(){
 			if(lastCommand && !cmd.outputFileName.empty()){
 				// write to file https://stackoverflow.com/questions/8516823/redirecting-output-to-a-file-in-c
 				cout << "OUTPUT FILE" << endl;
-				int out = open(&cmd.outputFileName[0], O_RDWR|O_CREAT|O_APPEND, 0600);
+				int flags;
+				if(appendOutput){
+					flags = O_RDWR|O_CREAT|O_APPEND;
+				}else{
+					flags = O_RDWR|O_CREAT;
+				}
+				int out = open(&cmd.outputFileName[0], flags, 0600);
 				if (-1 == out) { 
 					perror("error opening output file"); 
 					return 255; 
