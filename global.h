@@ -7,6 +7,8 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <pwd.h>
+#include <cstddef> 
 using namespace std;
 
 struct command {
@@ -15,6 +17,8 @@ struct command {
 	string inputFileName;
    string outputFileName;
 };
+
+void updateParentDirectories(string path);
 
 char* subAliases(char* name);
 

@@ -104,51 +104,32 @@ list* newArgList() {
 	return l;
 }
 
-
+// TODO deal with CD command ending in /
+// cd ../..
 int runCD(char* arg) {
 	if (arg[0] != '/') { // arg is relative path
-
+		cout << "RELATIVE PATH" << endl;
 		// add a / to the current path
 		// append the arg to the current path + /
 		string newPath = envMap["PWD"]+"/"+arg;
 
 		// if error, shouldnt varTable.word[0] be reset to before concat?
 		if(chdir(newPath.c_str()) == 0) {  // change working directory
-
 			envMap["PWD"] = newPath;
-			// strcpy(aliasTable.word[0], varTable.word[0]); // set . to dir
-			// strcpy(aliasTable.word[1], varTable.word[0]); // set .. to dir (?)
-
-			// not sure what the point of this is
-			// char *pointer = strrchr(aliasTable.word[1], '/');
-			// while(*pointer != '\0') {
-			// 	*pointer ='\0';
-			// 	pointer++;
-			// }
-		}
-		else {
+			updateParentDirectories(newPath);
+		}else {
 			//strcpy(varTable.word[0], varTable.word[0]); // fix
 			printf("Directory not found\n");
 			return 1;
 		}
-	}
-	else { // arg is absolute path
+	}else { // arg is absolute path
 		if(chdir(arg) == 0){ // change dir
-			// strcpy(aliasTable.word[0], arg); // set . to arg
-			// strcpy(aliasTable.word[1], arg); // set .. to arg (?)
-			// strcpy(varTable.word[0], arg); // set PWD to arg
 			envMap["PWD"] = arg;
-
-			// ?
-			// char *pointer = strrchr(aliasTable.word[1], '/');
-			// while(*pointer != '\0') {
-			// 	*pointer ='\0';
-			// 	pointer++;
-			// }
+			updateParentDirectories(arg);
 		}
 		else {
 			printf("Directory not found\n");
-						return 1;
+			return 1;
 		}
 	}
 	return 1;
@@ -249,7 +230,19 @@ int runPrintVariable(){
 }
 
 void unsetVariable(char* variable){
+	if(strcmp(variable, "HOME") == 0){
+		cout << "Cannot unset HOME variable" << endl;
+		return;
+	}
+	if(strcmp(variable, "PATH") == 0){
+		cout << "Cannot unset PATH variable" << endl;
+		return;
+	}
 	envMap.erase(variable);
+}
+
+void runPrintCurrentDirectory(){
+	cout << envMap["PWD"] << endl;
 }
 
 void runExampleCommand(){
