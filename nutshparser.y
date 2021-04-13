@@ -168,6 +168,7 @@ pipedCmds* appendToCmdList(pipedCmds* p, char* name, list* args) {
 
 // TODO deal with CD command ending in /
 // cd ../..
+// cd testdir/../..
 int runCD(char* arg) {
 	if (arg[0] != '/') { // arg is relative path
 		cout << "RELATIVE PATH" << endl;
@@ -403,7 +404,7 @@ int runCommandTable(struct vector<command> commandTable){
 	// 3rd loop - execute commands, deal with actual files here
 	for(int i = 0; i < validCommandCount; i++){
 		command cmd = commandTable[i];
-		cout << cmd.commandName << endl;
+		// cout << cmd.commandName << endl;
 
 		if(fork() == 0){
 			// execute command
@@ -429,7 +430,7 @@ int runCommandTable(struct vector<command> commandTable){
 			bool lastCommand = i == validCommandCount - 1;
 			
 			if(firstCommand && !lastCommand){
-				cout << "FIRST COMMAND " << cmd.commandName << endl;
+				// cout << "FIRST COMMAND " << cmd.commandName << endl;
 				// only assign stdout to write to pipe
 				dup2(pipes[0][INPUT_END], STDOUT_FILENO);
 				close(pipes[0][INPUT_END]);
@@ -456,7 +457,7 @@ int runCommandTable(struct vector<command> commandTable){
 			}
 			
 			if(lastCommand && !firstCommand){
-				cout << "LAast " << cmd.commandName << endl;
+				// cout << "LAast " << cmd.commandName << endl;
 				// output is stdout
 				dup2(saved_stdout, STDOUT_FILENO);
 				// input is output from previous command
@@ -470,7 +471,7 @@ int runCommandTable(struct vector<command> commandTable){
 			}
 			if(lastCommand && !cmd.outputFileName.empty()){
 				// write to file https://stackoverflow.com/questions/8516823/redirecting-output-to-a-file-in-c
-				cout << "OUTPUT FILE" << endl;
+				// cout << "OUTPUT FILE" << endl;
 				int out = open(&cmd.outputFileName[0], O_RDWR|O_CREAT|O_APPEND, 0600);
 				if (-1 == out) { 
 					perror("error opening output file"); 
@@ -526,7 +527,7 @@ int runCommandTable(struct vector<command> commandTable){
 
 	// close(saved_stdout);
 	// close(saved_stdin);
-	cout << "waiting  " << endl;
+	// cout << "waiting  " << endl;
 	// TODO handle the & and background processing. do that here (at the command level, race conditions between commands?)? or at the table level?
 	int status;
 	for (int i = 0; i < validCommandCount; i++)
