@@ -360,6 +360,13 @@ void printFileName(int fd){
 // ASSUMPTION: any command/multiple commands can have input files with <.
 // ^ the spec however, only shows one < at the end of the line?
 int runCommandTable(){
+	if(commandTable.size() == 1){
+		// TESTING
+		commandTable[0].inputFileName = "input.txt";
+		commandTable[0].outputFileName = "e.txt";
+		cout << "assign output file" << endl;
+	}
+
 	int pipes[commandTable.size()-1][2];
 
 
@@ -410,13 +417,24 @@ int runCommandTable(){
 			bool firstCommand = i == 0;
 			bool lastCommand = i == validCommandCount - 1;
 			
+			// handle input
+			if(firstCommand && !cmd.inputFileName.empty()){
+				cout << "READING INPUT" << endl;
+				// https://linuxhint.com/dup2_system_call_c/
+				int inputFd = open(&cmd.inputFileName[0], O_RDONLY);
+				if(dup2(inputFd, STDIN_FILENO) < 0){
+					// err
+				}
+
+			}
+
 			if(firstCommand && !lastCommand){
 				// cout << "FIRST COMMAND " << cmd.commandName << endl;
 				// only assign stdout to write to pipe
 				dup2(pipes[0][INPUT_END], STDOUT_FILENO);
 				close(pipes[0][INPUT_END]);
 				// input stays stdin
-				dup2(saved_stdin, STDIN_FILENO);
+				// dup2(saved_stdin, STDIN_FILENO);
 			}
 			
 			if(!(firstCommand || lastCommand)){
@@ -452,7 +470,7 @@ int runCommandTable(){
 			}
 			if(lastCommand && !cmd.outputFileName.empty()){
 				// write to file https://stackoverflow.com/questions/8516823/redirecting-output-to-a-file-in-c
-				// cout << "OUTPUT FILE" << endl;
+				cout << "OUTPUT FILE" << endl;
 				int out = open(&cmd.outputFileName[0], O_RDWR|O_CREAT|O_APPEND, 0600);
 				if (-1 == out) { 
 					perror("error opening output file"); 
