@@ -35,7 +35,7 @@ int runSetEnv(char *variable, char *word);
 int runPrintVariable();
 void unsetVariable(char* variable);
 
-int runCommandTable(struct vector<command> commandTable);
+int runCommandTable();
 
 void runExampleCommand();
 void printFileName(int fd);
@@ -103,7 +103,7 @@ cmd_line    	:
 																			for(int i = 0; i < $3->commands.size(); i++) {
 																				command cmd;
 																				cmd.commandName = $3->commands[i]->name;
-																				printf("%s\n", cmd.commandName);
+																				//printf("%s\n", cmd.commandName);
 
 																				vector<string> args;
 																				for(int j = 0; j < $3->commands[i]->args->size; j++) {
@@ -115,7 +115,7 @@ cmd_line    	:
 																			}
 
 																			
-																			runCommandTable(commandTable);
+																			runCommandTable();
 																			return 1;
 																		}
 
@@ -293,6 +293,8 @@ int runPrintAlias(){
 	for(it = aliasMap.begin(); it != aliasMap.end(); ++it){
 		cout << it->first << "=" << it->second << endl;
 	}
+
+	return 1;
 }
 
 void unsetAlias(char* name){
@@ -322,6 +324,8 @@ int runPrintVariable(){
 	for(it = envMap.begin(); it != envMap.end(); ++it){
 		cout << it->first << "=" << it->second << endl;
 	}
+
+	return 1;
 }
 
 void unsetVariable(char* variable){
@@ -340,62 +344,6 @@ void runPrintCurrentDirectory(){
 	cout << envMap["PWD"] << endl;
 }
 
-void runExampleCommand(){
-	commandTable.clear();
-	// command start = { .commandName = "/bin/ls"};
-	// command cat = { .commandName = "/bin/cat"};
-	// vector<string> catArgs; catArgs.push_back("Makefile");
-	// cat.args = catArgs;
-	// // cat.outputFileName = "testOut.txt";
-
-	// command grep = { .commandName = "/bin/grep"};
-	// vector<string> grepArgs; grepArgs.push_back("txt");
-	// grep.args = grepArgs;
-	// // grep.outputFileName = "testOut2.txt";
-
-	// commandTable.push_back(start);
-	// // commandTable.push_back(cat);
-	// commandTable.push_back(grep); // if only command is grep, it hangs. this is expected.
-
-	// runCommandTable(commandTable);
-	// return;
-
-	// ls -l | grep "txt" | sort -n | tail-5 | rev | head-2| less
-	command ls = { .commandName = "/bin/ls"};
-	vector<string> arg1; arg1.push_back("-l");
-	ls.args = arg1;
-
-	command grep = { .commandName = "/bin/grep"};
-	vector<string> arg2; arg2.push_back("c");
-	grep.args = arg2;
-
-	command sort = { .commandName = "/usr/bin/sort"};
-	vector<string> arg3; arg3.push_back("-n");
-	sort.args = arg3;
-
-	command tail = { .commandName = "/bin/tail"};
-	vector<string> arg4; arg4.push_back("-2");
-	tail.args = arg4;
-	// tail.outputFileName = "testOut3.txt";
-
-	command rev = { .commandName = "/bin/rev"};
-
-	command head = { .commandName = "/bin/head"};
-	vector<string> arg5; arg5.push_back("-2");
-	head.args = arg5;
-
-	command less = { .commandName = "/bin/head"};
-	less.outputFileName = "testOut3.txt";
-
-	commandTable.push_back(ls);
-	commandTable.push_back(grep);
-	commandTable.push_back(sort);
-	commandTable.push_back(tail);
-	commandTable.push_back(rev);
-	commandTable.push_back(less);
-	runCommandTable(commandTable);
-}
-
 void printFileName(int fd){
 	enum { BUFFERSIZE = 1024 };
 	char buf1[BUFFERSIZE];
@@ -411,8 +359,9 @@ void printFileName(int fd){
 
 // ASSUMPTION: any command/multiple commands can have input files with <.
 // ^ the spec however, only shows one < at the end of the line?
-int runCommandTable(struct vector<command> commandTable){
+int runCommandTable(){
 	int pipes[commandTable.size()-1][2];
+
 
 	int saved_stdout = dup(STDOUT_FILENO);
 	int saved_stdin = dup(STDIN_FILENO);
