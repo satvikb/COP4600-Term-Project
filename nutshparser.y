@@ -1,9 +1,4 @@
 %{
-// This is ONLY a demo micro-shell whose purpose is to illustrate the need for and how to handle nested alias substitutions and Flex start conditions.
-// This is to help students learn these specific capabilities, the code is by far not a complete nutshell by any means.
-// Only "alias name word", "cd word", and "bye" run.
-
-
 /*
 strcpy (dest, source) - copy from source to dest
 strrchr (string, char) - return pointer to last occurance of character in str. null ptr if nothing
@@ -72,9 +67,8 @@ cmd_line    	:
 	| UNSETENV STRING END												{unsetVariable($2); return 1;}
 	| PRINTENV END														{runPrintVariable(); return 1;}
 	//| ALIAS STRING STRING END											{runSetAlias($2, $3); return 1;}
-	//| ALIAS END															{runPrintAlias(); return 1;}
+	//| ALIAS END														{runPrintAlias(); return 1;}
 	| UNALIAS STRING END												{unsetAlias($2); return 1;}
-	| EC END	{runExampleCommand(); return 1;}
 	| redirectable_cmd arg_list piped_cmd_list END						{
 																			// printf("%s\n", $1); 
 																			// printf("%s\n", "Main Cmd Arguments");
