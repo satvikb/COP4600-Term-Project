@@ -35,7 +35,8 @@ int runSetEnv(char *variable, char *word);
 int runPrintVariable();
 void unsetVariable(char* variable);
 
-int runCommandTable(bool appendOutput, bool redirectStdErr, bool stdErrToStdOut, string errFileOutput, bool backgroundProcessing);
+int runCommandTable(bool appendOutput, bool redirectStdErr, bool stdErrToStdOut, string errFileOutput);
+int runCommandTableInBackground(bool appendOutput, bool redirectStdErr, bool stdErrToStdOut, string errFileOutput);
 void runExampleCommand();
 void printFileName(int fd);
 %}
@@ -113,8 +114,8 @@ cmd_line    	:
 																				commandTable.push_back(cmd);
 																			}
 
-																			
-																			runCommandTable(false, true, false, "error.txt", false);
+																			runCommandTable(false, true, false, "error.txt");
+																			// runCommandTableInBackground(false, true, false, "error.txt");
 																			return 1;
 																		}
 
@@ -349,19 +350,20 @@ void printFileName(int fd){
 	cout << buf1;
 }
 
+int runCommandTableInBackground(bool appendOutput, bool redirectStdErr, bool stdErrToStdOut, string errFileOutput){
+	if(fork() == 0){
+		runCommandTable(appendOutput, redirectStdErr, stdErrToStdOut, errFileOutput);
+		exit(0);
+	}
+	return 0;
+}
+
 // ASSUMPTION: a command can only do one of either Output to file or Redirect into pipe, Not both.
 // ^ so a command must end with | or > (if not using &1)
 
 // ASSUMPTION: any command/multiple commands can have input files with <.
 // ^ the spec however, only shows one < at the end of the line?
-int runCommandTable(bool appendOutput, bool redirectStdErr, bool stdErrToStdOut, string errFileOutput, bool backgroundProcessing){
-	if(commandTable.size() == 1){
-		// TESTING
-		commandTable[0].inputFileName = "input.txt";
-		commandTable[0].outputFileName = "e.txt";
-		cout << "assign output file" << endl;
-	}
-
+int runCommandTable(bool appendOutput, bool redirectStdErr, bool stdErrToStdOut, string errFileOutput){
 	int pipes[commandTable.size()-1][2];
 
 
@@ -394,8 +396,6 @@ int runCommandTable(bool appendOutput, bool redirectStdErr, bool stdErrToStdOut,
 			Output pipe for 2: [9,10]
 		]
 	*/
-	perror("testing error");
-	cout << "Normal outptu" << endl;
 	int validCommandCount = commandTable.size();
 	// 1st loop through command table
 	// initialize all pipes (just do pipe())
@@ -434,7 +434,7 @@ int runCommandTable(bool appendOutput, bool redirectStdErr, bool stdErrToStdOut,
 			
 			// handle input
 			if(firstCommand && !cmd.inputFileName.empty()){
-				cout << "READING INPUT" << endl;
+				// cout << "READING INPUT" << endl;
 				// https://linuxhint.com/dup2_system_call_c/
 				int inputFd = open(&cmd.inputFileName[0], O_RDONLY);
 				if(dup2(inputFd, STDIN_FILENO) < 0){
@@ -485,7 +485,7 @@ int runCommandTable(bool appendOutput, bool redirectStdErr, bool stdErrToStdOut,
 			}
 			if(lastCommand && !cmd.outputFileName.empty()){
 				// write to file https://stackoverflow.com/questions/8516823/redirecting-output-to-a-file-in-c
-				cout << "OUTPUT FILE" << endl;
+				// cout << "OUTPUT FILE" << endl;
 				int flags;
 				if(appendOutput){
 					flags = O_RDWR|O_CREAT|O_APPEND;
@@ -562,6 +562,7 @@ int runCommandTable(bool appendOutput, bool redirectStdErr, bool stdErrToStdOut,
 	// reset commandTable here
 	// TODO this doesnt work? might only be when outputting to file?
 	commandTable.clear();
+
 	return 0;
 }
 
