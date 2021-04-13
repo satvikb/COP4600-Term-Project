@@ -28,13 +28,19 @@ int main()
 }
 
 void buildEnvs(){
+    struct passwd *p = getpwuid(getuid());
+    char prefix[128] = "nutshell-";
+    strcat(prefix, p->pw_name);
+    //printf("User name: %s\n", p->pw_name);
+
+
     char cwd[PATH_MAX]; // PATH_MAX = 4096
     getcwd(cwd, sizeof(cwd)); // put the current working directory into cwd
    
     envMap["PWD"] = cwd;
     envMap["PATH"] = ".:/bin:/usr/bin";
     envMap["HOME"] = getHomeDirectory();
-    envMap["PROMPT"] = "nutshell-sb-rr";
+    envMap["PROMPT"] = prefix;
 }
 
 // char* getCurrentDirectory(){
