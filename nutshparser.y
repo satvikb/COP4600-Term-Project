@@ -43,55 +43,74 @@ int runCommandTable(struct vector<command> commandTable);
 
 void runExampleCommand();
 void printFileName(int fd);
+
+
+
 %}
-
-%code requires {
-    struct list {
-        char args[128][100];
-   		int size = 0;
-    };
-
-	list* newArgList();
-}
 
 %union {
 		char *string;
 		struct list* arguments;
+		struct pipedCmds* commands;
 	}
 
 %start cmd_line
-%token <string> BYE CD STRING ALIAS UNALIAS SETENV UNSETENV PRINTENV END CUSTOM_CMD
-%token PIPE "|"
-%token IN "<"
-%token OUT ">"
-%token A_OUT ">>"
+%token <string> BYE CD STRING ALIAS UNALIAS SETENV UNSETENV PRINTENV END CUSTOM_CMD PIPE IN OUT A_OUT
+// %token PIPE "|"
+// %token IN "<"
+// %token OUT ">"
+// %token A_OUT ">>"
 
+%nterm <string> redirectable_cmd
 %nterm <arguments> arg_list
+%nterm <commands> piped_cmd_list
 
 %%
-cmd_line    :
-	BYE END 		                {exit(1); return 1; }
-	| CD STRING END        			{runCD($2); return 1;}
-	| SETENV STRING STRING END		{runSetEnv($2, $3); return 1;}
-	| UNSETENV STRING END			{unsetVariable($2); return 1;}
-	| PRINTENV END					{runPrintVariable(); return 1;}
-	| ALIAS STRING STRING END		{runSetAlias($2, $3); return 1;}
-	| ALIAS END						{runPrintAlias(); return 1;}
-	| UNALIAS STRING END			{unsetAlias($2); return 1;}
-	| CUSTOM_CMD arg_list END		{
-										printf("%s\n", $1); 
-										
-										for(int i = 0; i < ($2)->size; i++) {
-											printf("%s\t", $2->args[i]);
-										}
-										printf("\n");
-										
-										return 1;
-									}
+cmd_line    	:
+	BYE END 		                									{exit(1); return 1; }
+	| CD STRING END        												{runCD($2); return 1;}
+	| SETENV STRING STRING END											{runSetEnv($2, $3); return 1;}
+	| UNSETENV STRING END												{unsetVariable($2); return 1;}
+	| PRINTENV END														{runPrintVariable(); return 1;}
+	//| ALIAS STRING STRING END											{runSetAlias($2, $3); return 1;}
+	//| ALIAS END															{runPrintAlias(); return 1;}
+	| UNALIAS STRING END												{unsetAlias($2); return 1;}
+	| redirectable_cmd arg_list piped_cmd_list END						{
+																			// printf("%s\n", $1); 
+																			// printf("%s\n", "Main Cmd Arguments");
+																			// for(int i = 0; i < ($2)->size; i++) {
+																			// 	printf("%s\t", $2->args[i]);
+																			// }
+																			// printf("\n");
 
-arg_list    :
+																			// printf("%s\n", "Nested Commands");
+
+																			// for(int i = 0; i < $3->commands.size(); i++) {
+																			// 	printf("%s\t", $3->commands[i]->name);
+																			// 	printf("\n");
+																			// 	for(int j = 0; j < $3->commands[i]->args->size; j++) {
+																			// 		printf("%s\t", $3->commands[i]->args->args[j]);
+																			// 	}
+																			// }
+																			// printf("\n");
+
+																			
+																			
+																			return 1;
+																		}
+
+redirectable_cmd	:
+	CUSTOM_CMD						{$$ = $1;}
+	| PRINTENV						{strcpy($$, "printenv");}
+	| ALIAS							{strcpy($$, "alias");}
+
+arg_list    		:
 	%empty							{$$ = newArgList();}
 	| arg_list STRING               {$$ = $1; strcpy($$->args[$$->size], $2); $$->size++;}
+
+piped_cmd_list 		:
+ 	%empty												{$$ = newPipedCmdList();}
+ 	| piped_cmd_list PIPE redirectable_cmd arg_list	{$$ = $1; $$ = appendToCmdList($$, $3, $4);}
 %%
 
 int yyerror(char *s) {
@@ -100,8 +119,24 @@ int yyerror(char *s) {
 }
 
 list* newArgList() {
-	list* l = (struct list*) malloc(sizeof(struct list));
+	list* l = new list();
 	return l;
+}
+
+pipedCmds* newPipedCmdList() {
+	pipedCmds* p = new pipedCmds();
+	return p;
+}
+
+pipedCmds* appendToCmdList(pipedCmds* p, char* name, list* args) {
+	nestedCmd* cmd = new nestedCmd();
+
+	strcpy(cmd->name, name);
+	cmd->args = args;
+
+	p->commands.push_back(cmd);
+
+	return p;
 }
 
 
