@@ -24,6 +24,7 @@ int yylex();
 int yyerror(char *s);
 
 int runCD(char* arg);
+string removeParent(string path);
 
 bool checkIfWordEndsAtName(char *name, char *word);
 int runSetAlias(char *name, char *word);
@@ -163,35 +164,72 @@ pipedCmds* appendToCmdList(pipedCmds* p, char* name, list* args) {
 // TODO deal with CD command ending in /
 // cd ../..
 // cd testdir/../..
-int runCD(char* arg) {
+int runCD(char* charArg) {
+	string arg = charArg;
+	// remove / at the end of path if present (is this optional?)
+	if(arg.back() == '/'){
+		arg.pop_back();
+	}
 	if (arg[0] != '/') { // arg is relative path
-		cout << "RELATIVE PATH" << endl;
-		// add a / to the current path
-		// append the arg to the current path + /
-		string newPath = envMap["PWD"]+"/"+arg;
-
-		// if error, shouldnt varTable.word[0] be reset to before concat?
-		if(chdir(newPath.c_str()) == 0) {  // change working directory
-			envMap["PWD"] = newPath;
-			updateParentDirectories(newPath);
-		}else {
-			//strcpy(varTable.word[0], varTable.word[0]); // fix
-			printf("Directory not found\n");
-			return 1;
-		}
-	}else { // arg is absolute path
-		if(chdir(arg) == 0){ // change dir
-			envMap["PWD"] = arg;
-			updateParentDirectories(arg);
-		}
-		else {
-			printf("Directory not found\n");
-			return 1;
+		if(arg[0] == '.' && arg.size() > 1 && arg[1] == '/'){ // prevent just .. as .
+			arg = CURRENT_DIR + arg.substr(1);
+		}else if(arg[0] == '.' && arg.size() == 1){
+			// just a .
+			arg = CURRENT_DIR;
+		}else{
+			arg = CURRENT_DIR+"/"+arg;
 		}
 	}
+
+	// cout << "ABSOLUTE PATH" << arg << endl;
+	// find the first .. and do recursive expansion
+	size_t foundDotDot = arg.find("..");
+	while (foundDotDot != std::string::npos){
+		string removingParentOn = arg.substr(0, foundDotDot+2);
+		string newPrefix = removeParent(removingParentOn);
+		arg = newPrefix + arg.substr(foundDotDot+2);
+		foundDotDot = arg.find("..");
+	}
+
+	if(chdir(arg.c_str()) == 0){ // change dir
+		envMap["PWD"] = arg;
+		updateParentDirectories(arg);
+	}else {
+		printf("Directory not found\n");
+		return 1;
+	}
+	
 	return 1;
 }
 
+// input - path with .. being the last thing in the string
+/*
+	ex input:
+	path/rel/to/..
+	/abs/path/to/..
+
+	output:
+	path/rel/
+	/abs/path/
+*/
+
+// output - actual path
+string removeParent(string path){
+	size_t found = path.rfind("..");
+	if (found != std::string::npos){
+		size_t foundSlash = path.substr(0, found-1).find_last_of("/\\");
+		string parent = path.substr(0,foundSlash);
+		path = parent;
+		// need?
+		if(path.back() == '/'){
+			path.pop_back();
+		}
+		return path;
+	}else{
+		// .. not found
+		return path;
+	}
+}
 
 /*
 existing:
