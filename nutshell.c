@@ -31,5 +31,5 @@ void buildEnvs(){
 
     envMap["PWD"] = cwd;
     envMap["PATH"] = ".:/bin:/usr/bin";
-    envMap["PROMPT"] = "nutshell-sb";
+    envMap["PROMPT"] = "nutshell-sb-rr";
 }
