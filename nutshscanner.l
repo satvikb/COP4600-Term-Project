@@ -4,8 +4,11 @@
 #include "dirent.h"
 #include <string.h>
 #include <unistd.h>
+#include <stdio.h>
 
 //#define unput(c) {yytchar= (c); if(yytchar=='\n') {yylineno--; *yysptr++=yytchar;}
+
+int enterCmd = 0;
 char* subAliases(char* name){
     auto sub = aliasMap.find(name);
     if(sub != aliasMap.end()){
@@ -78,27 +81,43 @@ ANYCHAR            [)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~ -][)(*&%$#@!`;,\.a-zA-Z0-9'/*_
                                     yylval.string = strdup(yytext);
                                     return STRING;                            
                                 }     
-<cmd_condition>"\n"		        { BEGIN(INITIAL); return END; }
-<cmd_condition>"|"              { BEGIN(INITIAL); return PIPE; }
+<cmd_condition>"\n"		        { enterCmd = 0; BEGIN(INITIAL); return END; }
+<cmd_condition>"|"              { enterCmd = 0; BEGIN(INITIAL); return PIPE; }
 
-<environment_condition>{CHAR}+  {                                   
-                                    //printf("yytext: %s\n", yytext);
-                                    yylval.string = strdup(yytext);
-                                    return STRING;                            
-                                }
-<environment_condition>"}"      { BEGIN(INITIAL); }
+<cmd_condition,environment_condition>{CHAR}+[}]    {                                   
+                                                        //printf("yytext: %s\n", yytext);
+                                                        char * cpy = strdup(yytext);
+                                                        cpy[strlen(cpy) - 1] = '\0';
+                                                        //printf("yytext: %s\n", cpy);
+                                                        auto sub = envMap.find(cpy);
+                                                        //cout << sub->second << endl;
+
+                                                        if(sub != envMap.end()){
+                                                            for ( int i = sub->second.length() - 1; i >= 0; --i ) {
+                                                                unput( sub->second[i] );
+                                                            }
+
+                                                        }
+
+                                                        free(cpy);
+                                                        if(enterCmd == 0) {
+                                                            BEGIN(INITIAL);
+                                                        } else {
+                                                            BEGIN(cmd_condition);
+                                                        }                
+                                                    }
 
 [ \t\r]		            { }
 bye                 { return BYE; }
-cd		            { BEGIN(cmd_condition); return CD; }
-alias		        { BEGIN(cmd_condition); return ALIAS; }
-unalias             { BEGIN(cmd_condition); return UNALIAS; }
-setenv		        { BEGIN(cmd_condition); return SETENV; }
-unsetenv            { BEGIN(cmd_condition); return UNSETENV; }
-printenv            { BEGIN(cmd_condition); return PRINTENV; }
+cd		            { enterCmd = 1; BEGIN(cmd_condition); return CD; }
+alias		        { enterCmd = 1; BEGIN(cmd_condition); return ALIAS; }
+unalias             { enterCmd = 1; BEGIN(cmd_condition); return UNALIAS; }
+setenv		        { enterCmd = 1; BEGIN(cmd_condition); return SETENV; }
+unsetenv            { enterCmd = 1; BEGIN(cmd_condition); return UNSETENV; }
+printenv            { enterCmd = 1; BEGIN(cmd_condition); return PRINTENV; }
 "\n"		        { return END; }
 "|"                 { return PIPE; }
-"${"                { BEGIN(environment_condition); }
+<INITIAL,cmd_condition>"${" { BEGIN(environment_condition); }
 [\"]                { BEGIN(string_condition); }
 {CHAR}+             {
                         if(ifAlias(yytext)) {
@@ -110,6 +129,7 @@ printenv            { BEGIN(cmd_condition); return PRINTENV; }
                                 free( yycopy );
                         } else if(ifCmd(yytext)) {
                             //printf("yytext: %s\n", yytext);
+                            enterCmd = 1; 
                             BEGIN(cmd_condition);
                             yylval.string = strdup(yytext);
                             return CUSTOM_CMD; 
