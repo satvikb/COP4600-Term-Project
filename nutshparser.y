@@ -46,11 +46,12 @@ void printFileName(int fd);
 		struct list* arguments;
 		struct pipedCmds* commands;
 		struct outputFileCmd* output;
+		struct errorOutput* error;
 	}
 
 %start cmd_line
 
-%token <string> BYE CD STRING ALIAS UNALIAS SETENV UNSETENV PRINTENV END CUSTOM_CMD EC PIPE IN OUT A_OUT
+%token <string> BYE CD STRING ALIAS UNALIAS SETENV UNSETENV PRINTENV END CUSTOM_CMD EC PIPE IN OUT A_OUT ERROR_FILE ERROR_OUTPUT
 // %token PIPE "|"
 // %token IN "<"
 // %token OUT ">"
@@ -62,6 +63,8 @@ void printFileName(int fd);
 %nterm <commands> piped_cmd_list
 %nterm <string> input_file
 %nterm <output> output_file
+%nterm <error> error_output
+
 
 %%
 cmd_line    	:
@@ -74,8 +77,20 @@ cmd_line    	:
 	//| ALIAS END														{runPrintAlias(); return 1;}
 	| UNALIAS STRING END												{unsetAlias($2); return 1;}
 
-	| redirectable_cmd arg_list piped_cmd_list input_file output_file END	{																		
+	| redirectable_cmd arg_list piped_cmd_list input_file output_file error_output END	{																		
+		string errorOutputFile = "";
 		bool appendOutput = false;
+		bool redirectStdError = false;
+		bool errorToStout = false;
+
+		if($6 != NULL) {
+			redirectStdError = true;
+			errorOutputFile = $6->fileName;
+			if($6->toFile == 0) {
+				errorToStout = true;
+			}
+		}
+
 		vector<string> mainArgs;
 		for(int i = 0; i < ($2)->size; i++) {
 			mainArgs.push_back($2->args[i]);
@@ -123,7 +138,7 @@ cmd_line    	:
 			appendOutput = true;	
 		} 
 
-		runCommandTable(appendOutput, false, false, "error.txt");
+		runCommandTable(appendOutput, redirectStdError, errorToStout, errorOutputFile);
 
 		delete $5;
 		
@@ -154,6 +169,11 @@ output_file :
 	%empty							{ $$ = NULL; }
 	| OUT STRING					{ $$ = new outputFileCmd(); $$->fileName = $2; $$->append = 0; }
 	| A_OUT STRING					{ $$ = new outputFileCmd(); $$->fileName = $2; $$->append = 1; }
+
+error_output :
+	%empty 							{ $$ = NULL; }
+	| ERROR_FILE STRING             { $$ = new errorOutput(); $$->fileName = $2; $$->toFile = 1; }
+	| ERROR_OUTPUT           		{ $$ = new errorOutput(); $$->fileName = ""; $$->toFile = 0; }
 %%
 
 int yyerror(char *s) {

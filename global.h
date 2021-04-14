@@ -37,6 +37,11 @@ struct outputFileCmd {
    int append = 0;
 };
 
+struct errorOutput {
+   string fileName = "";
+   int toFile = 0;
+};
+
 list* newArgList();
 pipedCmds* newPipedCmdList();
 pipedCmds* appendToCmdList(pipedCmds* p, char* name, list* args);
