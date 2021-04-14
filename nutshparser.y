@@ -42,7 +42,7 @@ void printFileName(int fd);
 %}
 
 %union {
-		int *intPtr;
+		int val;
 		char *string;
 		struct list* arguments;
 		struct pipedCmds* commands;
@@ -65,7 +65,7 @@ void printFileName(int fd);
 %nterm <string> input_file
 %nterm <output> output_file
 %nterm <error> error_output
-%nterm <intPtr> background
+%nterm <val> background
 
 
 %%
@@ -142,16 +142,14 @@ cmd_line    	:
 			
 		}
 
+		delete $3;
 		delete $5;
 		
-		if(*($7) == 1) {
+		if($7 == 0) {
 			runCommandTable(appendOutput, redirectStdError, errorToStout, errorOutputFile);
 		} else {
 			runCommandTableInBackground(appendOutput, redirectStdError, errorToStout, errorOutputFile);
 		}
-
-		//delete $3;
-		// runCommandTableInBackground(false, true, false, "error.txt");
 		return 1;
 	}
 
@@ -183,8 +181,8 @@ error_output :
 	| ERROR_OUTPUT           		{ $$ = new errorOutput(); $$->fileName = ""; $$->toFile = 0; }
 
 background   :
-	%empty							{ *($$) = 0; }
-	| BACKGROUND					{ *($$) = 1; } 
+	%empty							{ $$ = 0; }
+	| BACKGROUND					{ $$ = 1; }
 %%
 
 int yyerror(char *s) {
