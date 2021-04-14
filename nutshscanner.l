@@ -74,7 +74,12 @@ ANYCHAR            [)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~ -][)(*&%$#@!`;,\.a-zA-Z0-9'/*_
 %%
 
 <string_condition>{ANYCHAR}+     { yylval.string = strdup(yytext); return STRING;}
-<string_condition>[\"]          {BEGIN(INITIAL);}
+<string_condition>[\"]          {
+                                    if(enterCmd == 0)
+                                        BEGIN(INITIAL);
+                                    else 
+                                        BEGIN(cmd_condition);
+                                }
 
 <cmd_condition>{CHAR}+          {                                   
                                     //printf("yytext: %s\n", yytext);
@@ -89,6 +94,7 @@ ANYCHAR            [)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~ -][)(*&%$#@!`;,\.a-zA-Z0-9'/*_
 <cmd_condition>">"              { return OUT; }
 <cmd_condition>"\n"		        { enterCmd = 0; BEGIN(INITIAL); return END; }
 <cmd_condition>"|"              { enterCmd = 0; BEGIN(INITIAL); return PIPE; }
+<cmd_condition>[\"]             { BEGIN(string_condition); }
 
 <cmd_condition,environment_condition>{CHAR}+[}]    {                                   
                                                         //printf("yytext: %s\n", yytext);
