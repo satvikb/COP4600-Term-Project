@@ -39,6 +39,7 @@ int runCommandTable(bool appendOutput, bool redirectStdErr, bool stdErrToStdOut,
 int runCommandTableInBackground(bool appendOutput, bool redirectStdErr, bool stdErrToStdOut, string errFileOutput);
 void runExampleCommand();
 void printFileName(int fd);
+
 %}
 
 %union {
@@ -219,7 +220,21 @@ pipedCmds* appendToCmdList(pipedCmds* p, char* name, list* args) {
 // cd testdir/../..
 int runCD(string charArg){
 	// cout << "CDDD>>>" << endl;
-	string arg = charArg;
+	string arg = expandDirectory(charArg);
+	
+
+	if(chdir(arg.c_str()) == 0){ // change dir
+		envMap["PWD"] = arg;
+		updateParentDirectories(arg);
+	} else {
+		printf("Directory not found\n");
+		return 1;
+	}
+	
+	return 1;
+}
+
+string expandDirectory(string arg){
 	if(arg.empty()){
 		arg = getHomeDirectory();
 	}
@@ -247,16 +262,7 @@ int runCD(string charArg){
 		arg = newPrefix + arg.substr(foundDotDot+2);
 		foundDotDot = arg.find("..");
 	}
-
-	if(chdir(arg.c_str()) == 0){ // change dir
-		envMap["PWD"] = arg;
-		updateParentDirectories(arg);
-	} else {
-		printf("Directory not found\n");
-		return 1;
-	}
-	
-	return 1;
+	return arg;
 }
 
 // input - path with .. being the last thing in the string

@@ -22,11 +22,6 @@ bool ifAlias(char* name){
 bool ifCmd(char* arg){
     if(arg[0] == '/') {
         if( access( arg, X_OK ) == 0){
-            // command cmd;
-            // cmd.commandName = arg;
-            
-            // commandTable.push_back(cmd);
-
             return true;
         } else {
             return false;
@@ -40,6 +35,41 @@ bool ifCmd(char* arg){
         while(token != NULL) {            
             DIR* d;
             struct dirent *dir;
+
+            if(strcmp(token, ".") == 0){
+                // // // current dir
+                // // string fullArgPath = expandDirectory(arg);
+                // // size_t found = fullArgPath.find_last_of("/\\");
+                // // cout << "CUR DIR" << token << "ARG: " << arg << "EXPANDED: " << expandDirectory(arg) << endl;
+                // // token = &CURRENT_DIR[0];
+                // // arg = &("." + fullArgPath.substr(found+1))[0];
+                // cout << "CUR DIR" << token << expandDirectory(token) << endl;
+                // // token = &CURRENT_DIR[0];//&expandDirectory(token)[0];
+                // cout << "TOK" << token << expandDirectory(token) << endl;
+
+                // string name = arg;
+                // size_t found = name.find_last_of("/\\");
+                // if(found != string::npos){
+                //     // make arg just the program name without the ./
+                //     cout << "NAM " << name << expandDirectory(name) << endl;
+                //     name = name.substr(found+1);
+                //                         cout << "NAM2 " << name << expandDirectory(name) << endl;
+
+                // }else{
+                //     // no / in arg
+                // }
+                // // arg = &name[0];
+                string fullArgPath = expandDirectory(arg);
+                cout << "CUR DIR" << token << "ARG: " << arg << "EXPANDED: " << fullArgPath << endl;
+                bool isInLocalDir = ifCmd(&fullArgPath[0]);
+                if(isInLocalDir){
+                    return true;
+                }else{
+                    token = strtok(NULL, ":");
+                    continue;
+                }
+            }
+
             d = opendir(token);
             while((dir = readdir(d)) != NULL) {
                 if(strcmp(arg, dir->d_name) == 0) {

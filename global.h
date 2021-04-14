@@ -49,6 +49,7 @@ pipedCmds* appendToCmdList(pipedCmds* p, char* name, list* args);
 char* subAliases(char* name);
 void updateParentDirectories(string path);
 const char* getHomeDirectory();
+string expandDirectory(string arg);
 
 extern map<string,string> envMap;
 extern map<string,string> aliasMap;
