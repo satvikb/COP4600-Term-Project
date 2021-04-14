@@ -33,6 +33,11 @@ struct pipedCmds {
    vector<nestedCmd*> commands;
 };
 
+struct outputFileCmd {
+   string fileName;
+   int append = 0;
+};
+
 list* newArgList();
 pipedCmds* newPipedCmdList();
 pipedCmds* appendToCmdList(pipedCmds* p, char* name, list* args);
