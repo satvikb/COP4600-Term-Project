@@ -66,15 +66,16 @@ void printFileName(int fd);
 %%
 cmd_line    	:
 	BYE END 		                									{exit(1); return 1; }
+	| CD END															{runCD(""); return 1;}
 	| CD STRING END        												{runCD($2); return 1;}
 	| SETENV STRING STRING END											{runSetEnv($2, $3); return 1;}
 	| UNSETENV STRING END												{unsetVariable($2); return 1;}
-	| PRINTENV END														{runPrintVariable(); return 1;}
+	// | PRINTENV END														{runPrintVariable(); return 1;}
 	| ALIAS STRING STRING END											{runSetAlias($2, $3); return 1;}
 	//| ALIAS END														{runPrintAlias(); return 1;}
 	| UNALIAS STRING END												{unsetAlias($2); return 1;}
 
-	| redirectable_cmd arg_list piped_cmd_list input_file output_file END	{																		
+	| redirectable_cmd arg_list piped_cmd_list input_file output_file END	{
 		bool appendOutput = false;
 		vector<string> mainArgs;
 		for(int i = 0; i < ($2)->size; i++) {
@@ -100,7 +101,7 @@ cmd_line    	:
 		for(int i = 0; i < $3->commands.size(); i++) {
 			command cmd;
 			cmd.commandName = $3->commands[i]->name;
-			//printf("%s\n", cmd.commandName);
+			//printf("%s\n",  $3->commands[i]->name);
 
 			vector<string> args;
 			for(int j = 0; j < $3->commands[i]->args->size; j++) {
@@ -144,7 +145,7 @@ arg_list    		:
 
 piped_cmd_list 		:
  	%empty												{$$ = newPipedCmdList();}
- 	| piped_cmd_list PIPE redirectable_cmd arg_list	{$$ = $1; $$ = appendToCmdList($$, $3, $4);}
+ 	| piped_cmd_list PIPE redirectable_cmd arg_list	{$$ = $1; $$ = appendToCmdList($1, $3, $4);}
 
 input_file			:
 	%empty							{ strcpy($$, ""); }
@@ -180,7 +181,6 @@ pipedCmds* appendToCmdList(pipedCmds* p, char* name, list* args) {
 	cmd->args = args;
 
 	p->commands.push_back(cmd);
-
 	return p;
 }
 
@@ -390,7 +390,7 @@ int runCommandTableInBackground(bool appendOutput, bool redirectStdErr, bool std
 // ASSUMPTION: any command/multiple commands can have input files with <.
 // ^ the spec however, only shows one < at the end of the line?
 int runCommandTable(bool appendOutput, bool redirectStdErr, bool stdErrToStdOut, string errFileOutput){
-		cout << "RUNNING " << commandTable.size() << " commands" << endl;
+		// cout << "RUNNING " << commandTable.size() << " commands" << endl;
 	int pipes[commandTable.size()-1][2];
 
 	int saved_stdout = dup(STDOUT_FILENO);
@@ -427,7 +427,12 @@ int runCommandTable(bool appendOutput, bool redirectStdErr, bool stdErrToStdOut,
 	// initialize all pipes (just do pipe())
 	for(int i = 0; i < commandTable.size(); i++){
 		command cmd = commandTable[i];
-		cout << i << ": " << cmd.commandName << endl;
+		// cout << i << ": " << cmd.commandName << endl;
+
+		// for(int k = 0; k < cmd.args.size(); k++){
+		// 	cout << "A: " << cmd.args[k] << endl;
+		// }
+
 		pipe(pipes[i]);
 	}
 	
@@ -480,7 +485,7 @@ int runCommandTable(bool appendOutput, bool redirectStdErr, bool stdErrToStdOut,
 			}
 			
 			if(!(firstCommand || lastCommand)){
-				cout << "middle " << cmd.commandName << endl;
+				// cout << "middle " << cmd.commandName << endl;
 				// input is output end pipe from previous command
 				if(dup2(pipes[i-1][OUTPUT_END], STDIN_FILENO) < 0){
 					cout << "ERROR" << endl;
@@ -561,8 +566,10 @@ int runCommandTable(bool appendOutput, bool redirectStdErr, bool stdErrToStdOut,
 			// cout << endl;
 
 			if(cmd.commandName == "alias"){
-				cout << "ALIASSSS" << endl;
 				runPrintAlias();
+				exit(0);
+			}else if(cmd.commandName == "printenv"){
+				runPrintVariable();
 				exit(0);
 			}else{
 				if (execv(argv[0], (char **)argv) < 0){
