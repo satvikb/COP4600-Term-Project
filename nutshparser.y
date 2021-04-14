@@ -108,10 +108,11 @@ cmd_line    	:
 		command mainCommand;
 		mainCommand.commandName = $1;
 		mainCommand.args = mainArgs;
-		string inputFileName($4);
 
-		if(inputFileName != "")
-			mainCommand.inputFileName = inputFileName;
+		if($4 != NULL){
+			string inputFileName($4);
+			mainCommand.inputFileName = inputFileName;					
+		}
 		
 		if($3->commands.size() == 0 && $5 != NULL) {
 			mainCommand.outputFileName = $5->fileName;
@@ -167,7 +168,7 @@ piped_cmd_list 		:
  	| piped_cmd_list PIPE redirectable_cmd arg_list	{$$ = $1; $$ = appendToCmdList($1, $3, $4);}
 
 input_file			:
-	%empty							{ strcpy($$, ""); }
+	%empty							{ $$ = NULL; }
 	| IN STRING						{ $$ = $2; }
 
 output_file :
