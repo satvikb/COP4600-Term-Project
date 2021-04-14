@@ -73,6 +73,7 @@ ANYCHAR            [)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~ -][}{)(*&%$#@!`;,\.a-zA-Z0-9'/
 %x environment_condition
 %%
 
+<<EOF>>             { return EOFEND; }
 <string_condition>{ANYCHAR}+     { yylval.string = strdup(yytext); return STRING;}
 <string_condition>[\"]          {
                                     if(enterCmd == 0)
@@ -116,7 +117,6 @@ ANYCHAR            [)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~ -][}{)(*&%$#@!`;,\.a-zA-Z0-9'/
                                                             BEGIN(cmd_condition);
                                                         }                
                                                     }
-
 [ \t\r]		            { }
 bye                 { return BYE; }
 cd		            { enterCmd = 1; BEGIN(cmd_condition); return CD; }

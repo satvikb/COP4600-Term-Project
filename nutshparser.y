@@ -23,7 +23,7 @@ chdir (path) - change working directory
 int yylex(); 
 int yyerror(char *s);
 
-int runCD(char* arg);
+int runCD(string charArg);
 string removeParent(string path);
 
 bool checkIfWordEndsAtName(char *name, char *word);
@@ -52,7 +52,7 @@ void printFileName(int fd);
 
 %start cmd_line
 
-%token <string> BYE CD STRING ALIAS UNALIAS SETENV UNSETENV PRINTENV END CUSTOM_CMD EC PIPE IN OUT A_OUT ERROR_FILE ERROR_OUTPUT BACKGROUND
+%token <string> BYE EOFEND CD STRING ALIAS UNALIAS SETENV UNSETENV PRINTENV END CUSTOM_CMD EC PIPE IN OUT A_OUT ERROR_FILE ERROR_OUTPUT BACKGROUND
 // %token PIPE "|"
 // %token IN "<"
 // %token OUT ">"
@@ -71,6 +71,7 @@ void printFileName(int fd);
 %%
 cmd_line    	:
 	BYE END 		                									{exit(1); return 1; }
+	| EOFEND															{exit(1); return 1; }
 	| CD END															{runCD(""); return 1;}
 	| CD STRING END        												{runCD($2); return 1;}
 	| SETENV STRING STRING END											{runSetEnv($2, $3); return 1;}
@@ -155,7 +156,7 @@ cmd_line    	:
 	}
 
 redirectable_cmd	:
-	CUSTOM_CMD						{$$ = $1;}
+	CUSTOM_CMD						{strcpy($$, $1);}
 	| PRINTENV						{strcpy($$, "printenv");}
 	| ALIAS							{strcpy($$, "alias");}
 
@@ -216,7 +217,8 @@ pipedCmds* appendToCmdList(pipedCmds* p, char* name, list* args) {
 // TODO deal with CD command ending in /
 // cd ../..
 // cd testdir/../..
-int runCD(char* charArg) {
+int runCD(string charArg){
+	// cout << "CDDD>>>" << endl;
 	string arg = charArg;
 	if(arg.empty()){
 		arg = getHomeDirectory();
