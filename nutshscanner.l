@@ -23,11 +23,6 @@ bool ifAlias(char* name){
 bool ifCmd(char* arg){
     if(arg[0] == '/') {
         if( access( arg, X_OK ) == 0){
-            // command cmd;
-            // cmd.commandName = arg;
-            
-            // commandTable.push_back(cmd);
-
             return true;
         } else {
             return false;
@@ -41,6 +36,21 @@ bool ifCmd(char* arg){
         while(token != NULL) {            
             DIR* d;
             struct dirent *dir;
+
+            if(strcmp(token, ".") == 0){
+                // test cur dir
+                // get absolute path of argument
+                string fullArgPath = expandDirectory(arg);
+                bool isInLocalDir = ifCmd(&fullArgPath[0]);
+                if(isInLocalDir){
+                    return true;
+                }else{
+                    // go next
+                    token = strtok(NULL, ":");
+                    continue;
+                }
+            }
+
             d = opendir(token);
             while((dir = readdir(d)) != NULL) {
                 if(strcmp(arg, dir->d_name) == 0) {
@@ -75,7 +85,10 @@ ANYCHAR         [)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~ -][}{)(*&%$#@!`;,\.a-zA-Z0-9'/*_=
 %x environment_condition
 %%
 
-<string_condition>{ANYCHAR}+    { yylval.string = strdup(yytext); return STRING;}
+
+<<EOF>>             { return EOFEND; }
+<string_condition>{ANYCHAR}+     { yylval.string = strdup(yytext); return STRING;}
+
 <string_condition>[\"]          {
                                     if(enterCmd == 0)
                                         BEGIN(INITIAL);
@@ -130,6 +143,7 @@ ANYCHAR         [)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~ -][}{)(*&%$#@!`;,\.a-zA-Z0-9'/*_=
 <cmd_condition>"|"              { enterCmd = 0; BEGIN(INITIAL); return PIPE; }
 
 <environment_condition>{CHAR}+[}]    {                                   
+
                                         //printf("yytext: %s\n", yytext);
                                         char * cpy = strdup(yytext);
                                         cpy[strlen(cpy) - 1] = '\0';
@@ -150,7 +164,7 @@ ANYCHAR         [)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~ -][}{)(*&%$#@!`;,\.a-zA-Z0-9'/*_=
                                             BEGIN(cmd_condition);
                                         }                
                                     }
-
+                                    
 [ \t\r]		            { }
 bye                 { return BYE; }
 cd		            { enterCmd = 1; BEGIN(cmd_condition); return CD; }
