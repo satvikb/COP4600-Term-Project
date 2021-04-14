@@ -80,7 +80,10 @@ ANYCHAR            [)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~ -][)(*&%$#@!`;,\.a-zA-Z0-9'/*_
                                     //printf("yytext: %s\n", yytext);
                                     yylval.string = strdup(yytext);
                                     return STRING;                            
-                                }     
+                                }
+<cmd_condition>"<"              { return IN; }
+<cmd_condition>">>"             { return A_OUT; }
+<cmd_condition>">"              { return OUT; }
 <cmd_condition>"\n"		        { enterCmd = 0; BEGIN(INITIAL); return END; }
 <cmd_condition>"|"              { enterCmd = 0; BEGIN(INITIAL); return PIPE; }
 
@@ -96,7 +99,6 @@ ANYCHAR            [)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~ -][)(*&%$#@!`;,\.a-zA-Z0-9'/*_
                                                             for ( int i = sub->second.length() - 1; i >= 0; --i ) {
                                                                 unput( sub->second[i] );
                                                             }
-
                                                         }
 
                                                         free(cpy);

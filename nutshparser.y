@@ -45,6 +45,7 @@ void printFileName(int fd);
 		char *string;
 		struct list* arguments;
 		struct pipedCmds* commands;
+		struct outputFileCmd* output;
 	}
 
 %start cmd_line
@@ -59,6 +60,8 @@ void printFileName(int fd);
 %nterm <string> redirectable_cmd
 %nterm <arguments> arg_list
 %nterm <commands> piped_cmd_list
+%nterm <string> input_file
+%nterm <output> output_file
 
 %%
 cmd_line    	:
@@ -70,54 +73,47 @@ cmd_line    	:
 	//| ALIAS STRING STRING END											{runSetAlias($2, $3); return 1;}
 	//| ALIAS END														{runPrintAlias(); return 1;}
 	| UNALIAS STRING END												{unsetAlias($2); return 1;}
-	| redirectable_cmd arg_list piped_cmd_list END						{
-																			// printf("%s\n", $1); 
-																			// printf("%s\n", "Main Cmd Arguments");
-																			// for(int i = 0; i < ($2)->size; i++) {
-																			// 	printf("%s\t", $2->args[i]);
-																			// }
-																			// printf("\n");
+	| redirectable_cmd arg_list piped_cmd_list input_file output_file END			{																		
+																						vector<string> mainArgs;
+																						for(int i = 0; i < ($2)->size; i++) {
+																							mainArgs.push_back($2->args[i]);
+																						}
+																						free($2->args);
+																						//delete $2;
+																						command mainCommand;
+																						mainCommand.commandName = $1;
+																						mainCommand.args = mainArgs;
+																						string inputFileName($4);
 
-																			// printf("%s\n", "Nested Commands");
+																						if(inputFileName != "")
+																							mainCommand.inputFileName = inputFileName;
 
-																			// for(int i = 0; i < $3->commands.size(); i++) {
-																			// 	printf("%s\t", $3->commands[i]->name);
-																			// 	printf("\n");
-																			// 	for(int j = 0; j < $3->commands[i]->args->size; j++) {
-																			// 		printf("%s\t", $3->commands[i]->args->args[j]);
-																			// 	}
-																			// }
-																			// printf("\n");
-																			
-																			vector<string> mainArgs;
-																			for(int i = 0; i < ($2)->size; i++) {
-																				mainArgs.push_back($2->args[i]);
-																			}
-																			command mainCommand;
-																			mainCommand.commandName = $1;
-																			mainCommand.args = mainArgs;
+																						
+																						commandTable.push_back(mainCommand);
 
-																			
-																			commandTable.push_back(mainCommand);
+																						for(int i = 0; i < $3->commands.size(); i++) {
+																							command cmd;
+																							cmd.commandName = $3->commands[i]->name;
+																							//printf("%s\n", cmd.commandName);
 
-																			for(int i = 0; i < $3->commands.size(); i++) {
-																				command cmd;
-																				cmd.commandName = $3->commands[i]->name;
-																				//printf("%s\n", cmd.commandName);
+																							vector<string> args;
+																							for(int j = 0; j < $3->commands[i]->args->size; j++) {
+																								args.push_back($3->commands[i]->args->args[j]);
+																							}
+																							//delete $3->commands[i]->args;
+																							//delete $3->commands[i];
 
-																				vector<string> args;
-																				for(int j = 0; j < $3->commands[i]->args->size; j++) {
-																					args.push_back($3->commands[i]->args->args[j]);
-																				}
+																							cmd.args = args;
+																							commandTable.push_back(cmd);
+																							
+																						}
 
-																				cmd.args = args;
-																				commandTable.push_back(cmd);
-																			}
+																						runCommandTable(false, false, false, "error.txt");
 
-																			runCommandTable(false, true, false, "error.txt");
-																			// runCommandTableInBackground(false, true, false, "error.txt");
-																			return 1;
-																		}
+																						//delete $3;
+																						// runCommandTableInBackground(false, true, false, "error.txt");
+																						return 1;
+																					}
 
 redirectable_cmd	:
 	CUSTOM_CMD						{$$ = $1;}
@@ -131,6 +127,14 @@ arg_list    		:
 piped_cmd_list 		:
  	%empty												{$$ = newPipedCmdList();}
  	| piped_cmd_list PIPE redirectable_cmd arg_list	{$$ = $1; $$ = appendToCmdList($$, $3, $4);}
+
+input_file			:
+	%empty							{ strcpy($$, ""); }
+	| IN STRING						{ $$ = $2; }
+
+output_file :
+	%empty							{ $$ = NULL; }
+
 %%
 
 int yyerror(char *s) {
