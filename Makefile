@@ -17,3 +17,4 @@ nutshellC:
 
 clean:
 	rm nutshparser.tab.c nutshparser.tab.h lex.yy.c nutshell
+	
