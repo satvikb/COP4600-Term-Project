@@ -66,15 +66,17 @@ void printFileName(int fd);
 %%
 cmd_line    	:
 	BYE END 		                									{exit(1); return 1; }
+	| CD END															{runCD(""); return 1;}
 	| CD STRING END        												{runCD($2); return 1;}
 	| SETENV STRING STRING END											{runSetEnv($2, $3); return 1;}
 	| UNSETENV STRING END												{unsetVariable($2); return 1;}
-	| PRINTENV END														{runPrintVariable(); return 1;}
+	// | PRINTENV END														{runPrintVariable(); return 1;}
 	| ALIAS STRING STRING END											{runSetAlias($2, $3); return 1;}
 	//| ALIAS END														{runPrintAlias(); return 1;}
 	| UNALIAS STRING END												{unsetAlias($2); return 1;}
 
-	| redirectable_cmd arg_list piped_cmd_list input_file output_file END	{																		
+	| redirectable_cmd arg_list piped_cmd_list input_file output_file END	{
+		cout << "MAIN " << $1 << endl;																	
 		bool appendOutput = false;
 		vector<string> mainArgs;
 		for(int i = 0; i < ($2)->size; i++) {
@@ -100,7 +102,8 @@ cmd_line    	:
 		for(int i = 0; i < $3->commands.size(); i++) {
 			command cmd;
 			cmd.commandName = $3->commands[i]->name;
-			//printf("%s\n", cmd.commandName);
+			cout << "PIPE " <<  $3->commands[i]->name << endl;
+			printf("Piped: %s\n",  $3->commands[i]->name);
 
 			vector<string> args;
 			for(int j = 0; j < $3->commands[i]->args->size; j++) {
@@ -134,17 +137,17 @@ cmd_line    	:
 	}
 
 redirectable_cmd	:
-	CUSTOM_CMD						{$$ = $1;}
+	CUSTOM_CMD						{cout << "CUSTOM CMD " << $1 << endl; $$ = $1;}
 	| PRINTENV						{strcpy($$, "printenv");}
 	| ALIAS							{strcpy($$, "alias");}
 
 arg_list    		:
-	%empty							{$$ = newArgList();}
-	| arg_list STRING               {$$ = $1; strcpy($$->args[$$->size], $2); $$->size++;}
+	%empty							{cout << "CUSTOM CMD333 " << endl;$$ = newArgList();}
+	| arg_list STRING               {cout << "CUSTOM CMD2 3" << $1 << endl;$$ = $1; strcpy($$->args[$$->size], $2); $$->size++;}
 
 piped_cmd_list 		:
  	%empty												{$$ = newPipedCmdList();}
- 	| piped_cmd_list PIPE redirectable_cmd arg_list	{$$ = $1; $$ = appendToCmdList($$, $3, $4);}
+ 	| piped_cmd_list PIPE redirectable_cmd arg_list	{cout << "CUSTOM CMD2 " << $1 << "_" << $3 << endl; $$ = $1; $$ = appendToCmdList($1, $3, $4);}
 
 input_file			:
 	%empty							{ strcpy($$, ""); }
@@ -181,6 +184,7 @@ pipedCmds* appendToCmdList(pipedCmds* p, char* name, list* args) {
 
 	p->commands.push_back(cmd);
 
+	cout << "CUSTOM CMD3 " << cmd->name << endl;
 	return p;
 }
 
@@ -428,6 +432,11 @@ int runCommandTable(bool appendOutput, bool redirectStdErr, bool stdErrToStdOut,
 	for(int i = 0; i < commandTable.size(); i++){
 		command cmd = commandTable[i];
 		cout << i << ": " << cmd.commandName << endl;
+
+		for(int k = 0; k < cmd.args.size(); k++){
+			cout << "A: " << cmd.args[k] << endl;
+		}
+
 		pipe(pipes[i]);
 	}
 	
@@ -561,8 +570,10 @@ int runCommandTable(bool appendOutput, bool redirectStdErr, bool stdErrToStdOut,
 			// cout << endl;
 
 			if(cmd.commandName == "alias"){
-				cout << "ALIASSSS" << endl;
 				runPrintAlias();
+				exit(0);
+			}else if(cmd.commandName == "printenv"){
+				runPrintVariable();
 				exit(0);
 			}else{
 				if (execv(argv[0], (char **)argv) < 0){
