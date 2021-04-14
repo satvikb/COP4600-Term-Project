@@ -73,46 +73,65 @@ cmd_line    	:
 	| ALIAS STRING STRING END											{runSetAlias($2, $3); return 1;}
 	//| ALIAS END														{runPrintAlias(); return 1;}
 	| UNALIAS STRING END												{unsetAlias($2); return 1;}
-	| redirectable_cmd arg_list piped_cmd_list input_file output_file END			{																		
-																						vector<string> mainArgs;
-																						for(int i = 0; i < ($2)->size; i++) {
-																							mainArgs.push_back($2->args[i]);
-																						}
-																						free($2->args);
-																						//delete $2;
-																						command mainCommand;
-																						mainCommand.commandName = $1;
-																						mainCommand.args = mainArgs;
-																						string inputFileName($4);
 
-																						if(inputFileName != "")
-																							mainCommand.inputFileName = inputFileName;
+	| redirectable_cmd arg_list piped_cmd_list input_file output_file END	{																		
+		bool appendOutput = false;
+		vector<string> mainArgs;
+		for(int i = 0; i < ($2)->size; i++) {
+			mainArgs.push_back($2->args[i]);
+		}
+		//free($2->args);
+		//delete $2;
+		command mainCommand;
+		mainCommand.commandName = $1;
+		mainCommand.args = mainArgs;
+		string inputFileName($4);
 
-																						commandTable.push_back(mainCommand);
+		if(inputFileName != "")
+			mainCommand.inputFileName = inputFileName;
+		
+		if($3->commands.size() == 0 && $5 != NULL) {
+			mainCommand.outputFileName = $5->fileName;
+		}
 
-																						for(int i = 0; i < $3->commands.size(); i++) {
-																							command cmd;
-																							cmd.commandName = $3->commands[i]->name;
-																							//printf("%s\n", cmd.commandName);
+		
+		commandTable.push_back(mainCommand);
 
-																							vector<string> args;
-																							for(int j = 0; j < $3->commands[i]->args->size; j++) {
-																								args.push_back($3->commands[i]->args->args[j]);
-																							}
-																							//delete $3->commands[i]->args;
-																							//delete $3->commands[i];
+		for(int i = 0; i < $3->commands.size(); i++) {
+			command cmd;
+			cmd.commandName = $3->commands[i]->name;
+			//printf("%s\n", cmd.commandName);
 
-																							cmd.args = args;
-																							commandTable.push_back(cmd);
-																							
-																						}
+			vector<string> args;
+			for(int j = 0; j < $3->commands[i]->args->size; j++) {
+				args.push_back($3->commands[i]->args->args[j]);
+			}
+			//delete $3->commands[i]->args;
+			//delete $3->commands[i];
 
-																						runCommandTable(false, true, true, "error.txt");
+			cmd.args = args;
 
-																						//delete $3;
-																						// runCommandTableInBackground(false, true, false, "error.txt");
-																						return 1;
-																					}
+			if(i == $3->commands.size() - 1 && $5 != NULL) {
+				cmd.outputFileName = $5->fileName;
+			}
+
+			commandTable.push_back(cmd);
+			
+		}
+
+		if($5 != NULL && $5->append == 1) {
+			appendOutput = true;	
+		} 
+
+		runCommandTable(appendOutput, false, false, "error.txt");
+
+		delete $5;
+		
+
+		//delete $3;
+		// runCommandTableInBackground(false, true, false, "error.txt");
+		return 1;
+	}
 
 redirectable_cmd	:
 	CUSTOM_CMD						{$$ = $1;}
@@ -133,7 +152,8 @@ input_file			:
 
 output_file :
 	%empty							{ $$ = NULL; }
-
+	| OUT STRING					{ $$ = new outputFileCmd(); $$->fileName = $2; $$->append = 0; }
+	| A_OUT STRING					{ $$ = new outputFileCmd(); $$->fileName = $2; $$->append = 1; }
 %%
 
 int yyerror(char *s) {
@@ -200,7 +220,7 @@ int runCD(char* charArg) {
 	if(chdir(arg.c_str()) == 0){ // change dir
 		envMap["PWD"] = arg;
 		updateParentDirectories(arg);
-	}else {
+	} else {
 		printf("Directory not found\n");
 		return 1;
 	}
