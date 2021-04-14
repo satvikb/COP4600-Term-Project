@@ -155,6 +155,7 @@ cmd_line    	:
 		}
 		return 1;
 	}
+	| error	END						{cout << endl << "The following command was not found: " << $2 << endl << "Please check your spelling." << endl << endl; return 1;}
 
 redirectable_cmd	:
 	CUSTOM_CMD						{strcpy($$, $1);}
@@ -189,7 +190,7 @@ background   :
 %%
 
 int yyerror(char *s) {
-  printf("%s\n",s);
+//   printf("The command was not found\n");
   return 0;
 }
 
