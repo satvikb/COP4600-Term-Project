@@ -66,7 +66,7 @@ bool ifCmd(char* arg){
 %option noyywrap
 
 CHAR            [.A-Za-z0-9!\/_-][.A-Za-z0-9!\/_-]*
-ANYCHAR            [)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~ -][)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~ -]*
+ANYCHAR            [)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~ -][}{)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~ -]*
 
 %x string_condition
 %x cmd_condition
@@ -94,9 +94,8 @@ ANYCHAR            [)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~ -][)(*&%$#@!`;,\.a-zA-Z0-9'/*_
 <cmd_condition>">"              { return OUT; }
 <cmd_condition>"\n"		        { enterCmd = 0; BEGIN(INITIAL); return END; }
 <cmd_condition>"|"              { enterCmd = 0; BEGIN(INITIAL); return PIPE; }
-<cmd_condition>[\"]             { BEGIN(string_condition); }
 
-<cmd_condition,environment_condition>{CHAR}+[}]    {                                   
+<environment_condition>{CHAR}+[}]    {                                   
                                                         //printf("yytext: %s\n", yytext);
                                                         char * cpy = strdup(yytext);
                                                         cpy[strlen(cpy) - 1] = '\0';
@@ -129,7 +128,7 @@ printenv            { enterCmd = 1; BEGIN(cmd_condition); yylval.string = strdup
 "\n"		        { return END; }
 "|"                 { return PIPE; }
 <INITIAL,cmd_condition>"${" { BEGIN(environment_condition); }
-[\"]                { BEGIN(string_condition); }
+<INITIAL,cmd_condition>[\"] { BEGIN(string_condition); }
 {CHAR}+             {
                         if(ifAlias(yytext)) {
                             printf("yytext before sub: %s\n", yytext);
