@@ -83,6 +83,9 @@ ANYCHAR            [)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~ -][)(*&%$#@!`;,\.a-zA-Z0-9'/*_
                                 }
 <cmd_condition>"<"              { return IN; }
 <cmd_condition>">>"             { return A_OUT; }
+<cmd_condition>"2>"             { return ERROR_FILE; }
+<cmd_condition>"2>&1"           { return ERROR_OUTPUT; }
+<cmd_condition>"&"              { return BACKGROUND; }
 <cmd_condition>">"              { return OUT; }
 <cmd_condition>"\n"		        { enterCmd = 0; BEGIN(INITIAL); return END; }
 <cmd_condition>"|"              { enterCmd = 0; BEGIN(INITIAL); return PIPE; }

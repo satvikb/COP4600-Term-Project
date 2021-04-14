@@ -42,15 +42,17 @@ void printFileName(int fd);
 %}
 
 %union {
+		int *intPtr;
 		char *string;
 		struct list* arguments;
 		struct pipedCmds* commands;
 		struct outputFileCmd* output;
+		struct errorOutput* error;
 	}
 
 %start cmd_line
 
-%token <string> BYE CD STRING ALIAS UNALIAS SETENV UNSETENV PRINTENV END CUSTOM_CMD EC PIPE IN OUT A_OUT
+%token <string> BYE CD STRING ALIAS UNALIAS SETENV UNSETENV PRINTENV END CUSTOM_CMD EC PIPE IN OUT A_OUT ERROR_FILE ERROR_OUTPUT BACKGROUND
 // %token PIPE "|"
 // %token IN "<"
 // %token OUT ">"
@@ -62,6 +64,9 @@ void printFileName(int fd);
 %nterm <commands> piped_cmd_list
 %nterm <string> input_file
 %nterm <output> output_file
+%nterm <error> error_output
+%nterm <intPtr> background
+
 
 %%
 cmd_line    	:
@@ -74,9 +79,26 @@ cmd_line    	:
 	| ALIAS STRING STRING END											{runSetAlias($2, $3); return 1;}
 	//| ALIAS END														{runPrintAlias(); return 1;}
 	| UNALIAS STRING END												{unsetAlias($2); return 1;}
-
-	| redirectable_cmd arg_list piped_cmd_list input_file output_file END	{
+	| redirectable_cmd arg_list piped_cmd_list input_file output_file error_output background END	{																		
+		string errorOutputFile = "";
 		bool appendOutput = false;
+		bool redirectStdError = false;
+		bool errorToStout = false;
+
+		if($5 != NULL && $5->append == 1) {
+			appendOutput = true;	
+		} 
+
+		if($6 != NULL) {
+			redirectStdError = true;
+			errorOutputFile = $6->fileName;
+			if($6->toFile == 0) {
+				errorToStout = true;
+			}
+		}
+
+		delete $6;
+
 		vector<string> mainArgs;
 		for(int i = 0; i < ($2)->size; i++) {
 			mainArgs.push_back($2->args[i]);
@@ -120,14 +142,13 @@ cmd_line    	:
 			
 		}
 
-		if($5 != NULL && $5->append == 1) {
-			appendOutput = true;	
-		} 
-
-		runCommandTable(appendOutput, false, false, "error.txt");
-
 		delete $5;
 		
+		if(*($7) == 1) {
+			runCommandTable(appendOutput, redirectStdError, errorToStout, errorOutputFile);
+		} else {
+			runCommandTableInBackground(appendOutput, redirectStdError, errorToStout, errorOutputFile);
+		}
 
 		//delete $3;
 		// runCommandTableInBackground(false, true, false, "error.txt");
@@ -155,6 +176,15 @@ output_file :
 	%empty							{ $$ = NULL; }
 	| OUT STRING					{ $$ = new outputFileCmd(); $$->fileName = $2; $$->append = 0; }
 	| A_OUT STRING					{ $$ = new outputFileCmd(); $$->fileName = $2; $$->append = 1; }
+
+error_output :
+	%empty 							{ $$ = NULL; }
+	| ERROR_FILE STRING             { $$ = new errorOutput(); $$->fileName = $2; $$->toFile = 1; }
+	| ERROR_OUTPUT           		{ $$ = new errorOutput(); $$->fileName = ""; $$->toFile = 0; }
+
+background   :
+	%empty							{ *($$) = 0; }
+	| BACKGROUND					{ *($$) = 1; } 
 %%
 
 int yyerror(char *s) {
