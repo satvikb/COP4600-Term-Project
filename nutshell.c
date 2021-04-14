@@ -13,7 +13,6 @@ void buildEnvs();
 void updatePrompt(string folderName);
 
 // char* getCurrentDirectory();
-const char* getHomeDirectory();
 
 int main()
 {

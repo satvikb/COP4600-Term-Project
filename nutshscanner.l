@@ -112,11 +112,11 @@ ANYCHAR            [)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~ -][)(*&%$#@!`;,\.a-zA-Z0-9'/*_
 [ \t\r]		            { }
 bye                 { return BYE; }
 cd		            { enterCmd = 1; BEGIN(cmd_condition); return CD; }
-alias		        { enterCmd = 1; BEGIN(cmd_condition); return ALIAS; }
+alias		        { enterCmd = 1; BEGIN(cmd_condition); yylval.string = strdup(yytext); return ALIAS; }
 unalias             { enterCmd = 1; BEGIN(cmd_condition); return UNALIAS; }
 setenv		        { enterCmd = 1; BEGIN(cmd_condition); return SETENV; }
 unsetenv            { enterCmd = 1; BEGIN(cmd_condition); return UNSETENV; }
-printenv            { enterCmd = 1; BEGIN(cmd_condition); return PRINTENV; }
+printenv            { enterCmd = 1; BEGIN(cmd_condition); yylval.string = strdup(yytext); return PRINTENV; }
 "\n"		        { return END; }
 "|"                 { return PIPE; }
 <INITIAL,cmd_condition>"${" { BEGIN(environment_condition); }

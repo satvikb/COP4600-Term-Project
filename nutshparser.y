@@ -70,9 +70,10 @@ cmd_line    	:
 	| SETENV STRING STRING END											{runSetEnv($2, $3); return 1;}
 	| UNSETENV STRING END												{unsetVariable($2); return 1;}
 	| PRINTENV END														{runPrintVariable(); return 1;}
-	//| ALIAS STRING STRING END											{runSetAlias($2, $3); return 1;}
+	| ALIAS STRING STRING END											{runSetAlias($2, $3); return 1;}
 	//| ALIAS END														{runPrintAlias(); return 1;}
 	| UNALIAS STRING END												{unsetAlias($2); return 1;}
+
 	| redirectable_cmd arg_list piped_cmd_list input_file output_file END	{																		
 		bool appendOutput = false;
 		vector<string> mainArgs;
@@ -188,6 +189,9 @@ pipedCmds* appendToCmdList(pipedCmds* p, char* name, list* args) {
 // cd testdir/../..
 int runCD(char* charArg) {
 	string arg = charArg;
+	if(arg.empty()){
+		arg = getHomeDirectory();
+	}
 	// remove / at the end of path if present (is this optional?)
 	if(arg.back() == '/'){
 		arg.pop_back();
@@ -386,8 +390,8 @@ int runCommandTableInBackground(bool appendOutput, bool redirectStdErr, bool std
 // ASSUMPTION: any command/multiple commands can have input files with <.
 // ^ the spec however, only shows one < at the end of the line?
 int runCommandTable(bool appendOutput, bool redirectStdErr, bool stdErrToStdOut, string errFileOutput){
+		cout << "RUNNING " << commandTable.size() << " commands" << endl;
 	int pipes[commandTable.size()-1][2];
-
 
 	int saved_stdout = dup(STDOUT_FILENO);
 	int saved_stdin = dup(STDIN_FILENO);
@@ -423,6 +427,7 @@ int runCommandTable(bool appendOutput, bool redirectStdErr, bool stdErrToStdOut,
 	// initialize all pipes (just do pipe())
 	for(int i = 0; i < commandTable.size(); i++){
 		command cmd = commandTable[i];
+		cout << i << ": " << cmd.commandName << endl;
 		pipe(pipes[i]);
 	}
 	
@@ -475,7 +480,7 @@ int runCommandTable(bool appendOutput, bool redirectStdErr, bool stdErrToStdOut,
 			}
 			
 			if(!(firstCommand || lastCommand)){
-				// cout << "middle " << cmd.commandName << endl;
+				cout << "middle " << cmd.commandName << endl;
 				// input is output end pipe from previous command
 				if(dup2(pipes[i-1][OUTPUT_END], STDIN_FILENO) < 0){
 					cout << "ERROR" << endl;
@@ -483,6 +488,7 @@ int runCommandTable(bool appendOutput, bool redirectStdErr, bool stdErrToStdOut,
 				close(pipes[i-1][OUTPUT_END]);
 				// output is write end of this pipe
 				if(dup2(pipes[i][INPUT_END], STDOUT_FILENO) < 0){
+					// perror("Err ");
 					cout << "ERROR2" << endl;
 				}
 				close(pipes[i][INPUT_END]);
@@ -554,11 +560,18 @@ int runCommandTable(bool appendOutput, bool redirectStdErr, bool stdErrToStdOut,
 			// printFileName(STDOUT_FILENO);
 			// cout << endl;
 
-			if (execv(argv[0], (char **)argv) < 0){
-				cout << "ERROR" << errno << endl;
-				// TODO purge command here and go to next input, maybe ensure all pipes are closed
+			if(cmd.commandName == "alias"){
+				cout << "ALIASSSS" << endl;
+				runPrintAlias();
 				exit(0);
+			}else{
+				if (execv(argv[0], (char **)argv) < 0){
+					cout << "ERROR" << errno << endl;
+					// TODO purge command here and go to next input, maybe ensure all pipes are closed
+					exit(0);
+				}
 			}
+			
 		}
 	}
 
@@ -578,6 +591,9 @@ int runCommandTable(bool appendOutput, bool redirectStdErr, bool stdErrToStdOut,
 	dup2(saved_stdout, STDOUT_FILENO);
 	dup2(saved_stdin, STDIN_FILENO);
 	dup2(saved_stderr, STDERR_FILENO);
+
+	fflush(stdout);
+	fflush(stderr);
 
 	close(saved_stdout);
 	close(saved_stdin);

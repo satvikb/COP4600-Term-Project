@@ -16,7 +16,6 @@ struct command {
    vector<string> args;
 	string inputFileName;
    string outputFileName;
-   bool outputAppend;
 };
 
 struct list {
@@ -44,6 +43,7 @@ pipedCmds* appendToCmdList(pipedCmds* p, char* name, list* args);
 
 char* subAliases(char* name);
 void updateParentDirectories(string path);
+const char* getHomeDirectory();
 
 extern map<string,string> envMap;
 extern map<string,string> aliasMap;
