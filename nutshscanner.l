@@ -5,6 +5,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <fnmatch.h>
 
 //#define unput(c) {yytchar= (c); if(yytchar=='\n') {yylineno--; *yysptr++=yytchar;}
 
@@ -66,14 +67,15 @@ bool ifCmd(char* arg){
 %option noyywrap
 
 CHAR            [.A-Za-z0-9!\/_-][.A-Za-z0-9!\/_-]*
-ANYCHAR            [)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~ -][}{)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~ -]*
+CMD_CHAR        [*?.A-Za-z0-9!\/_-][*?.A-Za-z0-9!\/_-]*
+ANYCHAR         [)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~ -][}{)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~ -]*
 
 %x string_condition
 %x cmd_condition
 %x environment_condition
 %%
 
-<string_condition>{ANYCHAR}+     { yylval.string = strdup(yytext); return STRING;}
+<string_condition>{ANYCHAR}+    { yylval.string = strdup(yytext); return STRING;}
 <string_condition>[\"]          {
                                     if(enterCmd == 0)
                                         BEGIN(INITIAL);
@@ -81,10 +83,42 @@ ANYCHAR            [)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~ -][}{)(*&%$#@!`;,\.a-zA-Z0-9'/
                                         BEGIN(cmd_condition);
                                 }
 
-<cmd_condition>{CHAR}+          {                                   
-                                    //printf("yytext: %s\n", yytext);
-                                    yylval.string = strdup(yytext);
-                                    return STRING;                            
+<cmd_condition>{CMD_CHAR}+      {                                   
+                                    if(strchr(yytext, '*') != NULL || strchr(yytext, '?') != NULL) {
+                                        vector<string> matchedFiles;
+
+                                        DIR* d;
+                                        struct dirent *dir;
+                                        d = opendir(envMap["PWD"].c_str());
+                                        while((dir = readdir(d)) != NULL) {
+                                            if(fnmatch(yytext, dir->d_name, 0) == 0) {
+                                                string s(dir->d_name);
+
+                                                matchedFiles.push_back(dir->d_name);
+                                            }
+                                        }
+                                        closedir(d);
+
+                                        if(matchedFiles.size() > 0) {
+                                            for(int i = 0; i < matchedFiles.size(); i++) {
+                                                for(int j = matchedFiles[i].length() - 1; j >= 0; j--) {
+                                                    unput(matchedFiles[i][j]);
+                                                }
+                                                unput(' ');
+                                            }
+                                        } else {
+                                            for(int i = strlen(yytext) - 1; i >= 0; i--) {
+                                                if(yytext[i] != '*' && yytext[i] != '?') {
+                                                    unput(yytext[i]);
+                                                }
+                                            }
+                                        }
+
+                                    } else {
+                                        yylval.string = strdup(yytext);
+                                        return STRING;
+                                    }
+                                                                
                                 }
 <cmd_condition>"<"              { return IN; }
 <cmd_condition>">>"             { return A_OUT; }
@@ -96,26 +130,26 @@ ANYCHAR            [)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~ -][}{)(*&%$#@!`;,\.a-zA-Z0-9'/
 <cmd_condition>"|"              { enterCmd = 0; BEGIN(INITIAL); return PIPE; }
 
 <environment_condition>{CHAR}+[}]    {                                   
-                                                        //printf("yytext: %s\n", yytext);
-                                                        char * cpy = strdup(yytext);
-                                                        cpy[strlen(cpy) - 1] = '\0';
-                                                        //printf("yytext: %s\n", cpy);
-                                                        auto sub = envMap.find(cpy);
-                                                        //cout << sub->second << endl;
+                                        //printf("yytext: %s\n", yytext);
+                                        char * cpy = strdup(yytext);
+                                        cpy[strlen(cpy) - 1] = '\0';
+                                        //printf("yytext: %s\n", cpy);
+                                        auto sub = envMap.find(cpy);
+                                        //cout << sub->second << endl;
 
-                                                        if(sub != envMap.end()){
-                                                            for ( int i = sub->second.length() - 1; i >= 0; --i ) {
-                                                                unput( sub->second[i] );
-                                                            }
-                                                        }
+                                        if(sub != envMap.end()){
+                                            for ( int i = sub->second.length() - 1; i >= 0; --i ) {
+                                                unput( sub->second[i] );
+                                            }
+                                        }
 
-                                                        free(cpy);
-                                                        if(enterCmd == 0) {
-                                                            BEGIN(INITIAL);
-                                                        } else {
-                                                            BEGIN(cmd_condition);
-                                                        }                
-                                                    }
+                                        free(cpy);
+                                        if(enterCmd == 0) {
+                                            BEGIN(INITIAL);
+                                        } else {
+                                            BEGIN(cmd_condition);
+                                        }                
+                                    }
 
 [ \t\r]		            { }
 bye                 { return BYE; }
