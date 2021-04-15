@@ -36,8 +36,8 @@ int runSetEnv(char *variable, char *word);
 int runPrintVariable();
 void unsetVariable(char* variable);
 
-int runCommandTable(bool appendOutput, bool redirectStdErr, bool stdErrToStdOut, string errFileOutput);
-int runCommandTableInBackground(bool appendOutput, bool redirectStdErr, bool stdErrToStdOut, string errFileOutput);
+int runCommandTable(vector<command> ct, bool appendOutput, bool redirectStdErr, bool stdErrToStdOut, string errFileOutput);
+int runCommandTableInBackground(vector<command> ct, bool appendOutput, bool redirectStdErr, bool stdErrToStdOut, string errFileOutput);
 void printFileName(int fd);
 
 %}
@@ -146,9 +146,9 @@ cmd_line    	:
 		delete $5;
 		
 		if($7 == 0) {
-			runCommandTable(appendOutput, redirectStdError, errorToStout, errorOutputFile);
+			runCommandTable(commandTable, appendOutput, redirectStdError, errorToStout, errorOutputFile);
 		} else {
-			runCommandTableInBackground(appendOutput, redirectStdError, errorToStout, errorOutputFile);
+			runCommandTableInBackground(commandTable, appendOutput, redirectStdError, errorToStout, errorOutputFile);
 		}
 		return 1;
 	}
@@ -462,11 +462,17 @@ void printFileName(int fd){
 	cout << buf1;
 }
 
-int runCommandTableInBackground(bool appendOutput, bool redirectStdErr, bool stdErrToStdOut, string errFileOutput){
-	if(fork() == 0){
-		cout << "RUNNING IN BG" << endl;
-		runCommandTable(appendOutput, redirectStdErr, stdErrToStdOut, errFileOutput);
+int runCommandTableInBackground(vector<command> ct, bool appendOutput, bool redirectStdErr, bool stdErrToStdOut, string errFileOutput){
+	int childPid = fork();
+	if(childPid == 0){
+		vector<command> ctCopy = ct;
+		// cout << "RUNNING IN BG" << endl;
+		runCommandTable(ctCopy, appendOutput, redirectStdErr, stdErrToStdOut, errFileOutput);
+		// cout << "RUNNING IN BG DONE" << endl;
+		fflush(stdout);
 		exit(0);
+	}else{
+		cout << "[Background PID]=" << childPid << endl;
 	}
 	return 0;
 }
@@ -476,13 +482,13 @@ int runCommandTableInBackground(bool appendOutput, bool redirectStdErr, bool std
 
 // ASSUMPTION: any command/multiple commands can have input files with <.
 // ^ the spec however, only shows one < at the end of the line?
-int runCommandTable(bool appendOutput, bool redirectStdErr, bool stdErrToStdOut, string errFileOutput){
+int runCommandTable(vector<command> ct, bool appendOutput, bool redirectStdErr, bool stdErrToStdOut, string errFileOutput){
 		// cout << "RUNNING " << commandTable.size() << " commands" << endl;
 	fflush(stdout);
 	printf("\x1B[A"); // move up one
 	printf("\n"); // make new line
 
-	int pipes[commandTable.size()-1][2];
+	int pipes[ct.size()-1][2];
 
 	int saved_stdout = dup(STDOUT_FILENO);
 	int saved_stdin = dup(STDIN_FILENO);
@@ -495,11 +501,11 @@ int runCommandTable(bool appendOutput, bool redirectStdErr, bool stdErrToStdOut,
 			Output pipe for 2: [9,10]
 		]
 	*/
-	int validCommandCount = commandTable.size();
+	int validCommandCount = ct.size();
 	// 1st loop through command table
 	// initialize all pipes (just do pipe())
-	for(int i = 0; i < commandTable.size(); i++){
-		command cmd = commandTable[i];
+	for(int i = 0; i < ct.size(); i++){
+		command cmd = ct[i];
 		// cout << i << ": " << cmd.commandName << endl;
 
 		// for(int k = 0; k < cmd.args.size(); k++){
@@ -511,7 +517,7 @@ int runCommandTable(bool appendOutput, bool redirectStdErr, bool stdErrToStdOut,
 	
 	// 3rd loop - execute commands, deal with actual files here
 	for(int i = 0; i < validCommandCount; i++){
-		command cmd = commandTable[i];
+		command cmd = ct[i];
 		// cout << cmd.commandName << endl;
 
 		if(fork() == 0){
@@ -687,11 +693,14 @@ int runCommandTable(bool appendOutput, bool redirectStdErr, bool stdErrToStdOut,
 	}
 
 
-	// cout << "waiting  " << endl;
+	cout << "waiting  " << endl;
 	// TODO handle the & and background processing. do that here (at the command level, race conditions between commands?)? or at the table level?
 	int status;
 	for (int i = 0; i < validCommandCount; i++)
 		wait(&status);
+
+	cout << "waitin2g  " << endl;
+	fflush(stdout);
 
 	// put everything back. is this needed?
 	dup2(saved_stdout, STDOUT_FILENO);
@@ -705,7 +714,7 @@ int runCommandTable(bool appendOutput, bool redirectStdErr, bool stdErrToStdOut,
 	close(saved_stdin);
 	// reset commandTable here
 	// TODO this doesnt work? might only be when outputting to file?
-	commandTable.clear();
+	ct.clear();
 
 	return 0;
 }
