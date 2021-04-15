@@ -53,7 +53,7 @@ void printFileName(int fd);
 
 %start cmd_line
 
-%token <string> BYE EOFEND CD STRING ALIAS UNALIAS SETENV UNSETENV PRINTENV END CUSTOM_CMD EC PIPE IN OUT A_OUT ERROR_FILE ERROR_OUTPUT BACKGROUND
+%token <string> BYE ESC EOFEND CD STRING ALIAS UNALIAS SETENV UNSETENV PRINTENV END CUSTOM_CMD EC PIPE IN OUT A_OUT ERROR_FILE ERROR_OUTPUT BACKGROUND
 // %token PIPE "|"
 // %token IN "<"
 // %token OUT ">"
@@ -71,7 +71,8 @@ void printFileName(int fd);
 
 %%
 cmd_line    	:
-	BYE END 		                									{exit(1); return 1; }
+	ESC																	{cout << "ESC" << endl;}
+	| BYE END 		                									{exit(1); return 1; }
 	| EOFEND															{exit(1); return 1; }
 	| CD END															{runCD(""); return 1;}
 	| CD STRING END        												{runCD($2); return 1;}
@@ -155,6 +156,7 @@ cmd_line    	:
 		}
 		return 1;
 	}
+	| error	END						{cout << endl << "The following command was not found: " << $2 << endl << "Please check your spelling." << endl << endl; return 1;}
 
 redirectable_cmd	:
 	CUSTOM_CMD						{strcpy($$, $1);}
@@ -189,7 +191,7 @@ background   :
 %%
 
 int yyerror(char *s) {
-  printf("%s\n",s);
+//   printf("The command was not found\n");
   return 0;
 }
 

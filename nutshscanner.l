@@ -88,6 +88,10 @@ ANYCHAR         [)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~ -][}{)(*&%$#@!`;,\.a-zA-Z0-9'/*_=
 
 
 <<EOF>>             { return EOFEND; }
+"\x1b"              { 
+                        cout << "ESC PRESSED " << endl;
+                        return ESC;
+                    }   
 <string_condition>{ANYCHAR}+     { yylval.string = strdup(yytext); return STRING;}
 
 <string_condition>[\"]          {
@@ -189,7 +193,7 @@ ANYCHAR         [)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~ -][}{)(*&%$#@!`;,\.a-zA-Z0-9'/*_=
                                             BEGIN(cmd_condition);
                                         }                
                                     }
-                                    
+              
 [ \t\r]		            { }
 bye                 { return BYE; }
 cd		            { enterCmd = 1; BEGIN(cmd_condition); return CD; }
@@ -202,6 +206,7 @@ printenv            { enterCmd = 1; BEGIN(cmd_condition); yylval.string = strdup
 "|"                 { return PIPE; }
 <INITIAL,cmd_condition>"${" { BEGIN(environment_condition); }
 <INITIAL,cmd_condition>[\"] { BEGIN(string_condition); }
+
 {CHAR}+             {
                         if(ifAlias(yytext)) {
                             printf("yytext before sub: %s\n", yytext);
@@ -217,7 +222,6 @@ printenv            { enterCmd = 1; BEGIN(cmd_condition); yylval.string = strdup
                             yylval.string = strdup(yytext);
                             return CUSTOM_CMD; 
                         } else {
-                            //printf("yytext: %s\n", yytext);
                             yylval.string = strdup(yytext);
                             return STRING;
                         };
