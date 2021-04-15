@@ -24,6 +24,9 @@ void errorMessage(string e);
 int runCD(string charArg);
 string removeParent(string path);
 
+string getFolderOfFile(string path);
+string getFileOfFolder(string path);
+
 bool checkIfWordEndsAtName(char *name, char *word);
 int runSetAlias(char *name, char *word);
 int runPrintAlias();
@@ -65,8 +68,7 @@ void printFileName(int fd);
 
 %%
 cmd_line    	:
-	ESC																	{cout << "ESC" << endl;}
-	| BYE END 		                									{exit(1); return 1; }
+	BYE END 		                									{exit(1); return 1; }
 	| EOFEND															{exit(1); return 1; }
 	| CD END															{runCD(""); return 1;}
 	| CD STRING END        												{runCD($2); return 1;}
@@ -150,7 +152,7 @@ cmd_line    	:
 		}
 		return 1;
 	}
-	| error	END						{cout << endl << "The following command was not found: " << $2 << endl << "Please check your spelling." << endl << endl; return 1;}
+	| error	END						{cout << endl << endl << "The following command was not found: " << $2 << endl << "Please check your spelling." << endl << endl; return 1;}
 
 redirectable_cmd	:
 	CUSTOM_CMD						{strcpy($$, $1);}
@@ -267,6 +269,38 @@ string expandDirectory(string arg){
 	return arg;
 }
 
+string completeString(string partial){
+	if(partial[0] == '~'){
+		auto i = FindPrefix(systemUsers, partial.substr(1));
+		if (i != systemUsers.end()){
+			cout << 'Found: \t' << i->first << ", " << i->second;
+			return i->second;
+		}
+	}else{
+		string fullPath = expandDirectory(partial);
+		string dirStr = getFolderOfFile(fullPath);
+		string fileName = getFileOfFolder(fullPath); // do it this way to take into account ../../fil	(esc)
+		string matchString = strcat(&fileName[0], "*");
+		cout << "Completing String " << partial.size() << "___" << fullPath << "____" << fileName << "____" << matchString << endl;
+
+ 		DIR* d;
+		struct dirent *dir;
+		d = opendir(dirStr.c_str());
+		while((dir = readdir(d)) != NULL) {
+			if(fnmatch(&matchString[0], dir->d_name, 0) == 0) {
+				string matched(dir->d_name);
+				closedir(d);
+				cout << "Found " << dirStr << "_Match: " << matched << endl;
+				string fullMatched = dirStr+"/"+matched;
+				// return fullMatched; // return this if yyput replaces everything before until space (need the whole path)
+				return matched; // return this if yyput only replaces the file name (not including / and ..)
+			}
+		}
+		closedir(d);
+	}
+	return partial;
+}
+
 // input - path with .. being the last thing in the string
 /*
 	ex input:
@@ -296,6 +330,22 @@ string removeParent(string path){
 	}
 }
 
+
+string getFolderOfFile(string path){
+	size_t found = path.find_last_of("/\\");
+	if(found != string::npos){
+		return path.substr(0,found);
+	}
+	return path;
+}
+
+string getFileOfFolder(string path){
+	size_t found = path.find_last_of("/\\");
+	if(found != string::npos){
+		return path.substr(found+1);
+	}
+	return path;
+}
 /*
 existing:
 alias one two
@@ -431,9 +481,9 @@ int runCommandTableInBackground(bool appendOutput, bool redirectStdErr, bool std
 // ^ the spec however, only shows one < at the end of the line?
 int runCommandTable(bool appendOutput, bool redirectStdErr, bool stdErrToStdOut, string errFileOutput){
 		// cout << "RUNNING " << commandTable.size() << " commands" << endl;
-	fflush(stdout);
-	printf("\x1B[A"); // move up one
-	printf("\n"); // make new line
+	// fflush(stdout);
+	// printf("\x1B[A"); // move up one
+	// printf("\n"); // make new line
 
 	int pipes[commandTable.size()-1][2];
 

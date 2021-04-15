@@ -1,11 +1,9 @@
 %{
 #include "nutshparser.tab.h"
 #include "global.h"
-#include "dirent.h"
 #include <string.h>
 #include <unistd.h>
 #include <stdio.h>
-#include <fnmatch.h>
 
 //#define unput(c) {yytchar= (c); if(yytchar=='\n') {yylineno--; *yysptr++=yytchar;}
 
@@ -88,10 +86,20 @@ ANYCHAR         [)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~ -][}{)(*&%$#@!`;,\.a-zA-Z0-9'/*_=
 
 
 <<EOF>>             { return EOFEND; }
-"\x1b"              { 
-                        cout << "ESC PRESSED " << endl;
-                        return ESC;
-                    }   
+<INITIAL,cmd_condition>{CHAR}+"\x1b"              { 
+                            yytext[strlen(yytext)-1]='\0';
+                        cout << "ESC PRESSED " << yytext << endl;
+                        fflush(stdout);
+                        string completed = completeString(yytext);
+                        cout << "ESC COMP " << completed << endl;
+                        char *yycopy = strdup( &completed[0] );
+                        for ( int i = strlen(&completed[0]) - 1; i >= 0; --i )
+                            unput( yycopy[i] );
+                        free( yycopy );
+                        // CHAR_NO_SLASH   [.A-Za-z0-9!\_-][.A-Za-z0-9!\_-]*
+
+                        // return ESC;
+                    } 
 <string_condition>{ANYCHAR}+     { yylval.string = strdup(yytext); return STRING;}
 
 <string_condition>[\"]          {
@@ -199,7 +207,7 @@ ANYCHAR         [)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~ -][}{)(*&%$#@!`;,\.a-zA-Z0-9'/*_=
                                         }                
                                     }
               
-[ \t\r]		            { }
+[ \t]		            { }
 bye                 { return BYE; }
 cd		            { enterCmd = 1; BEGIN(cmd_condition); return CD; }
 alias		        { enterCmd = 1; BEGIN(cmd_condition); yylval.string = strdup(yytext); return ALIAS; }
@@ -209,17 +217,18 @@ unsetenv            { enterCmd = 1; BEGIN(cmd_condition); return UNSETENV; }
 printenv            { enterCmd = 1; BEGIN(cmd_condition); yylval.string = strdup(yytext); return PRINTENV; }
 "\n"		        { return END; }
 "|"                 { return PIPE; }
+  
 <INITIAL,cmd_condition>"${" { BEGIN(environment_condition); }
 <INITIAL,cmd_condition>[\"] { BEGIN(string_condition); }
 
 {CHAR}+             {
                         if(ifAlias(yytext)) {
                             printf("yytext before sub: %s\n", yytext);
-                                // source: https://www.cs.princeton.edu/~appel/modern/c/software/flex/flex.html
-                                char *yycopy = strdup( subAliases(yytext) );
-                                for ( int i = strlen(subAliases(yytext)) - 1; i >= 0; --i )
-                                    unput( yycopy[i] );
-                                free( yycopy );
+                            // source: https://www.cs.princeton.edu/~appel/modern/c/software/flex/flex.html
+                            char *yycopy = strdup( subAliases(yytext) );
+                            for ( int i = strlen(subAliases(yytext)) - 1; i >= 0; --i )
+                                unput( yycopy[i] );
+                            free( yycopy );
                         } else if(ifCmd(yytext)) {
                             //printf("yytext: %s\n", yytext);
                             enterCmd = 1; 

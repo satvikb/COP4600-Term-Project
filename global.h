@@ -9,7 +9,12 @@
 #include <unistd.h>
 #include <pwd.h>
 #include <cstddef> 
+#include <algorithm>
+#include "dirent.h"
+#include <fnmatch.h>
 using namespace std;
+
+typedef map<string, string> TStrStrMap;
 
 struct command {
 	string commandName;
@@ -50,8 +55,12 @@ char* subAliases(char* name);
 void updateParentDirectories(string path);
 const char* getHomeDirectory();
 string expandDirectory(string arg);
+string completeString(string partial);
 
 extern map<string,string> envMap;
 extern map<string,string> aliasMap;
+extern map<string, string> systemUsers;
 extern string CURRENT_DIR;
 extern struct vector<command> commandTable;
+
+TStrStrMap::const_iterator FindPrefix(const TStrStrMap& map, const string& search_for);

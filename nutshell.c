@@ -10,6 +10,7 @@ extern int yyparse (void);
 
 char* getcwd(char *buf, size_t size);
 void buildEnvs();
+void getSystemUsers();
 void updatePrompt(string folderName);
 
 // char* getCurrentDirectory();
@@ -17,8 +18,8 @@ void updatePrompt(string folderName);
 int main()
 {
     buildEnvs();
-
     system("clear");
+    getSystemUsers();
     while(1)
     {
         printf("%s$ ", &envMap["PROMPT"][0]);
@@ -46,6 +47,22 @@ void buildEnvs(){
     updateParentDirectories(cwd);
 }
 
+void getSystemUsers(){
+    while (true) {
+        errno = 0; // so we can distinguish errors from no more entries
+        passwd* entry = getpwent();
+        if (!entry) {
+            if (errno) {
+                std::cerr << "Error getting all system users\n";
+                break;
+            }
+            break;
+        }
+        systemUsers[entry->pw_name] = entry->pw_dir;
+    }
+    endpwent();
+}
+
 // char* getCurrentDirectory(){
 //      return &cwd[0];
 // }
@@ -66,9 +83,8 @@ void updateParentDirectories(string path){
 
     updatePrompt(path.substr(found+1));
     CURRENT_DIR = path;
-    // aliasMap["."] = path;
-    // aliasMap[".."] = parent;
 }
+
 
 void updatePrompt(string folderName){
     struct passwd *p = getpwuid(getuid());
