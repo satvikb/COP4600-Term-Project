@@ -15,11 +15,11 @@ I worked on the tilde expansion extra credit.
 
 What is not implemented:
 Handling input from a file if the file does not end with a newline.
-Handling of non characters such as arrows, and the escape key.
-Auto completion with the escape key.
+Handling of non characters such as arrows.
 
 What is implemented:
 Built in commands.
 Other commands: finding them, piping them, redirecting them.
 Environmental variable expansion and wildcard matching.
 Tilde expansion.
+Auto completion with the escape key.

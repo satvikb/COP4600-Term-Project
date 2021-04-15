@@ -147,8 +147,10 @@ cmd_line    	:
 		
 		if($7 == 0) {
 			runCommandTable(commandTable, appendOutput, redirectStdError, errorToStout, errorOutputFile);
+			commandTable.clear();
 		} else {
 			runCommandTableInBackground(commandTable, appendOutput, redirectStdError, errorToStout, errorOutputFile);
+			commandTable.clear();
 		}
 		return 1;
 	}
@@ -221,8 +223,9 @@ pipedCmds* appendToCmdList(pipedCmds* p, char* name, list* args) {
 
 
 int runCD(string charArg){
+	CUR_ESC_PATH = "";
 	string arg = expandDirectory(charArg);
-
+	cout << "CD" << arg << endl;
 	if(chdir(arg.c_str()) == 0){ // change dir
 		envMap["PWD"] = arg;
 		updateParentDirectories(arg);
@@ -267,6 +270,7 @@ string expandDirectory(string arg){
 }
 
 string completeString(string partial){
+	// TODO deal with if partial has quotes?
 	if(partial[0] == '~'){
 		auto i = FindPrefix(systemUsers, partial.substr(1));
 		if (i != systemUsers.end()){
@@ -274,24 +278,40 @@ string completeString(string partial){
 			return i->second;
 		}
 	}else{
-		string fullPath = expandDirectory(partial);
+		string fullPath;
+		if(CUR_ESC_PATH == ""){
+			fullPath = expandDirectory(partial);
+		}else{
+			fullPath = CUR_ESC_PATH+partial;
+		}
 		string dirStr = getFolderOfFile(fullPath);
 		string fileName = getFileOfFolder(fullPath); // do it this way to take into account ../../fil	(esc)
 		string matchString = strcat(&fileName[0], "*");
-		// cout << "Completing String " << partial.size() << "___" << fullPath << "____" << fileName << "____" << matchString << endl;
+		cout << "Completing String " << partial.size() << "___" << dirStr << "____" << fileName << "____" << fullPath << endl;
 
  		DIR* d;
 		struct dirent *dir;
 		d = opendir(dirStr.c_str());
+		cout << "seg test" << d << " " << dirStr << endl;
 		while((dir = readdir(d)) != NULL) {
+					cout << "seg test2" << endl;
+
 			if(fnmatch(&matchString[0], dir->d_name, 0) == 0) {
+						cout << "seg test3" << endl;
+
 				string matched(dir->d_name);
 				closedir(d);
 				// cout << "Found " << dirStr << "_Match: " << matched << endl;
 				string fullMatched = dirStr+"/"+matched;
-				// return fullMatched; // return this if yyput replaces everything before until space (need the whole path)
-				return matched; // return this if yyput only replaces the file name (not including / and ..)
+				cout << "Found2 " << fullMatched << "_Match: " << matched << endl;
+				CUR_ESC_PATH = fullMatched;
+				return fullMatched; // return this if yyput replaces everything before until space (need the whole path)
+				// return matched; // return this if yyput only replaces the file name (not including / and ..)
 			}
+		}
+		if(d == NULL){
+			perror("Unable to open");
+			return partial;
 		}
 		closedir(d);
 	}
@@ -463,16 +483,21 @@ void printFileName(int fd){
 }
 
 int runCommandTableInBackground(vector<command> ct, bool appendOutput, bool redirectStdErr, bool stdErrToStdOut, string errFileOutput){
+	  
+	vector<command> ctCopy;// = ct;
+	copy(ct.begin(), ct.end(), back_inserter(ctCopy));
 	int childPid = fork();
 	if(childPid == 0){
-		vector<command> ctCopy = ct;
+		    // Copying vector by copy function
+
 		// cout << "RUNNING IN BG" << endl;
 		runCommandTable(ctCopy, appendOutput, redirectStdErr, stdErrToStdOut, errFileOutput);
-		// cout << "RUNNING IN BG DONE" << endl;
+		cout << "RUNNING IN BG DONE" << endl;
 		fflush(stdout);
 		exit(0);
 	}else{
 		cout << "[Background PID]=" << childPid << endl;
+		ct.clear();
 	}
 	return 0;
 }
@@ -483,7 +508,8 @@ int runCommandTableInBackground(vector<command> ct, bool appendOutput, bool redi
 // ASSUMPTION: any command/multiple commands can have input files with <.
 // ^ the spec however, only shows one < at the end of the line?
 int runCommandTable(vector<command> ct, bool appendOutput, bool redirectStdErr, bool stdErrToStdOut, string errFileOutput){
-		// cout << "RUNNING " << commandTable.size() << " commands" << endl;
+		cout << "RUNNING " << ct.size() << " commands" << endl;
+		CUR_ESC_PATH = "";
 	fflush(stdout);
 	printf("\x1B[A"); // move up one
 	printf("\n"); // make new line
@@ -655,7 +681,7 @@ int runCommandTable(vector<command> ct, bool appendOutput, bool redirectStdErr, 
 			}
 
 
-			// TODO need to restore stdin, out and err? it is also done in parent
+			
 			close(saved_stdout);
 			close(saved_stdin);
 			close(saved_stdin);

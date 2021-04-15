@@ -89,11 +89,14 @@ ANYCHAR         [)(*&%#@!`;,\.a-zA-Z0-9'/*_=~ -][}{)(*&%#@!`;,\.a-zA-Z0-9'/*_=~ 
 
 <<EOF>>             { return EOFEND; }
 
-<INITIAL,cmd_condition>[~]?{CHAR}+"\x1b"            { 
+<INITIAL,cmd_condition,string_condition>[~]?{CHAR}+"\x1b"            { 
+                                                            // cout << "ESC ON: " << yytext << endl;
                                                         yytext[strlen(yytext)-1]='\0'; // remove escape key from input
                                                         fflush(stdout);
+                                                        cout << "COMPLETE ON: " << yytext << endl;
                                                         string completed = completeString(yytext);
-                                                        // cout << "ESC COMP " << completed << endl;
+                                                        completed = '\"' + completed + '\"';
+                                                        cout << yytext << "ESC COMP " << completed << endl;
                                                         char *yycopy = strdup( &completed[0] );
                                                         for ( int i = strlen(&completed[0]) - 1; i >= 0; --i )
                                                             unput( yycopy[i] );

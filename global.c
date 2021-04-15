@@ -6,6 +6,9 @@ map<string,string> envMap;
 map<string,string> aliasMap;
 map<string, string> systemUsers;
 string CURRENT_DIR;
+// to keep track of multiple (esc) completions in one string
+// such as direc(esc)/subdire(esc)
+string CUR_ESC_PATH = "";
 // TODO maybe use list?
 struct vector<command> commandTable;
 
