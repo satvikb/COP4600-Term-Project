@@ -219,19 +219,16 @@ pipedCmds* appendToCmdList(pipedCmds* p, char* name, list* args) {
 	return p;
 }
 
-// TODO deal with CD command ending in /
-// cd ../..
-// cd testdir/../..
+
 int runCD(string charArg){
-	// cout << "CDDD>>>" << endl;
 	string arg = expandDirectory(charArg);
-	
 
 	if(chdir(arg.c_str()) == 0){ // change dir
 		envMap["PWD"] = arg;
 		updateParentDirectories(arg);
 	} else {
-		printf("cd: Directory not found\n");
+		printf("cd: Error for directory. Directory does not exist or insufficient permissions.\n");
+		// cout << errno << endl;
 		return 1;
 	}
 	
@@ -281,7 +278,7 @@ string completeString(string partial){
 		string dirStr = getFolderOfFile(fullPath);
 		string fileName = getFileOfFolder(fullPath); // do it this way to take into account ../../fil	(esc)
 		string matchString = strcat(&fileName[0], "*");
-		cout << "Completing String " << partial.size() << "___" << fullPath << "____" << fileName << "____" << matchString << endl;
+		// cout << "Completing String " << partial.size() << "___" << fullPath << "____" << fileName << "____" << matchString << endl;
 
  		DIR* d;
 		struct dirent *dir;
@@ -290,7 +287,7 @@ string completeString(string partial){
 			if(fnmatch(&matchString[0], dir->d_name, 0) == 0) {
 				string matched(dir->d_name);
 				closedir(d);
-				cout << "Found " << dirStr << "_Match: " << matched << endl;
+				// cout << "Found " << dirStr << "_Match: " << matched << endl;
 				string fullMatched = dirStr+"/"+matched;
 				// return fullMatched; // return this if yyput replaces everything before until space (need the whole path)
 				return matched; // return this if yyput only replaces the file name (not including / and ..)
@@ -481,9 +478,9 @@ int runCommandTableInBackground(bool appendOutput, bool redirectStdErr, bool std
 // ^ the spec however, only shows one < at the end of the line?
 int runCommandTable(bool appendOutput, bool redirectStdErr, bool stdErrToStdOut, string errFileOutput){
 		// cout << "RUNNING " << commandTable.size() << " commands" << endl;
-	// fflush(stdout);
-	// printf("\x1B[A"); // move up one
-	// printf("\n"); // make new line
+	fflush(stdout);
+	printf("\x1B[A"); // move up one
+	printf("\n"); // make new line
 
 	int pipes[commandTable.size()-1][2];
 

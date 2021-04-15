@@ -86,20 +86,16 @@ ANYCHAR         [)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~ -][}{)(*&%$#@!`;,\.a-zA-Z0-9'/*_=
 
 
 <<EOF>>             { return EOFEND; }
-<INITIAL,cmd_condition>{CHAR}+"\x1b"              { 
-                            yytext[strlen(yytext)-1]='\0';
-                        cout << "ESC PRESSED " << yytext << endl;
-                        fflush(stdout);
-                        string completed = completeString(yytext);
-                        cout << "ESC COMP " << completed << endl;
-                        char *yycopy = strdup( &completed[0] );
-                        for ( int i = strlen(&completed[0]) - 1; i >= 0; --i )
-                            unput( yycopy[i] );
-                        free( yycopy );
-                        // CHAR_NO_SLASH   [.A-Za-z0-9!\_-][.A-Za-z0-9!\_-]*
-
-                        // return ESC;
-                    } 
+<INITIAL,cmd_condition>[~]?{CHAR}+"\x1b"            { 
+                                                        yytext[strlen(yytext)-1]='\0'; // remove escape key from input
+                                                        fflush(stdout);
+                                                        string completed = completeString(yytext);
+                                                        // cout << "ESC COMP " << completed << endl;
+                                                        char *yycopy = strdup( &completed[0] );
+                                                        for ( int i = strlen(&completed[0]) - 1; i >= 0; --i )
+                                                            unput( yycopy[i] );
+                                                        free( yycopy );
+                                                    } 
 <string_condition>{ANYCHAR}+     { yylval.string = strdup(yytext); return STRING;}
 
 <string_condition>[\"]          {
