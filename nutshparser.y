@@ -36,8 +36,8 @@ int runSetEnv(char *variable, char *word);
 int runPrintVariable();
 void unsetVariable(char* variable);
 
-int runCommandTable(bool appendOutput, bool redirectStdErr, bool stdErrToStdOut, string errFileOutput);
-int runCommandTableInBackground(bool appendOutput, bool redirectStdErr, bool stdErrToStdOut, string errFileOutput);
+int runCommandTable(vector<command> ct, bool appendOutput, bool redirectStdErr, bool stdErrToStdOut, string errFileOutput);
+int runCommandTableInBackground(vector<command> ct, bool appendOutput, bool redirectStdErr, bool stdErrToStdOut, string errFileOutput);
 void printFileName(int fd);
 
 %}
@@ -146,9 +146,11 @@ cmd_line    	:
 		delete $5;
 		
 		if($7 == 0) {
-			runCommandTable(appendOutput, redirectStdError, errorToStout, errorOutputFile);
+			runCommandTable(commandTable, appendOutput, redirectStdError, errorToStout, errorOutputFile);
+			commandTable.clear();
 		} else {
-			runCommandTableInBackground(appendOutput, redirectStdError, errorToStout, errorOutputFile);
+			runCommandTableInBackground(commandTable, appendOutput, redirectStdError, errorToStout, errorOutputFile);
+			commandTable.clear();
 		}
 		return 1;
 	}
@@ -221,8 +223,9 @@ pipedCmds* appendToCmdList(pipedCmds* p, char* name, list* args) {
 
 
 int runCD(string charArg){
+	CUR_ESC_PATH = "";
 	string arg = expandDirectory(charArg);
-
+	cout << "CD" << arg << endl;
 	if(chdir(arg.c_str()) == 0){ // change dir
 		envMap["PWD"] = arg;
 		updateParentDirectories(arg);
@@ -267,6 +270,7 @@ string expandDirectory(string arg){
 }
 
 string completeString(string partial){
+	// TODO deal with if partial has quotes?
 	if(partial[0] == '~'){
 		auto i = FindPrefix(systemUsers, partial.substr(1));
 		if (i != systemUsers.end()){
@@ -274,24 +278,40 @@ string completeString(string partial){
 			return i->second;
 		}
 	}else{
-		string fullPath = expandDirectory(partial);
+		string fullPath;
+		if(CUR_ESC_PATH == ""){
+			fullPath = expandDirectory(partial);
+		}else{
+			fullPath = CUR_ESC_PATH+partial;
+		}
 		string dirStr = getFolderOfFile(fullPath);
 		string fileName = getFileOfFolder(fullPath); // do it this way to take into account ../../fil	(esc)
 		string matchString = strcat(&fileName[0], "*");
-		// cout << "Completing String " << partial.size() << "___" << fullPath << "____" << fileName << "____" << matchString << endl;
+		cout << "Completing String " << partial.size() << "___" << dirStr << "____" << fileName << "____" << fullPath << endl;
 
  		DIR* d;
 		struct dirent *dir;
 		d = opendir(dirStr.c_str());
+		cout << "seg test" << d << " " << dirStr << endl;
 		while((dir = readdir(d)) != NULL) {
+					cout << "seg test2" << endl;
+
 			if(fnmatch(&matchString[0], dir->d_name, 0) == 0) {
+						cout << "seg test3" << endl;
+
 				string matched(dir->d_name);
 				closedir(d);
 				// cout << "Found " << dirStr << "_Match: " << matched << endl;
 				string fullMatched = dirStr+"/"+matched;
-				// return fullMatched; // return this if yyput replaces everything before until space (need the whole path)
-				return matched; // return this if yyput only replaces the file name (not including / and ..)
+				cout << "Found2 " << fullMatched << "_Match: " << matched << endl;
+				CUR_ESC_PATH = fullMatched;
+				return fullMatched; // return this if yyput replaces everything before until space (need the whole path)
+				// return matched; // return this if yyput only replaces the file name (not including / and ..)
 			}
+		}
+		if(d == NULL){
+			perror("Unable to open");
+			return partial;
 		}
 		closedir(d);
 	}
@@ -462,11 +482,22 @@ void printFileName(int fd){
 	cout << buf1;
 }
 
-int runCommandTableInBackground(bool appendOutput, bool redirectStdErr, bool stdErrToStdOut, string errFileOutput){
-	if(fork() == 0){
-		cout << "RUNNING IN BG" << endl;
-		runCommandTable(appendOutput, redirectStdErr, stdErrToStdOut, errFileOutput);
+int runCommandTableInBackground(vector<command> ct, bool appendOutput, bool redirectStdErr, bool stdErrToStdOut, string errFileOutput){
+	  
+	vector<command> ctCopy;// = ct;
+	copy(ct.begin(), ct.end(), back_inserter(ctCopy));
+	int childPid = fork();
+	if(childPid == 0){
+		    // Copying vector by copy function
+
+		// cout << "RUNNING IN BG" << endl;
+		runCommandTable(ctCopy, appendOutput, redirectStdErr, stdErrToStdOut, errFileOutput);
+		cout << "RUNNING IN BG DONE" << endl;
+		fflush(stdout);
 		exit(0);
+	}else{
+		cout << "[Background PID]=" << childPid << endl;
+		ct.clear();
 	}
 	return 0;
 }
@@ -476,13 +507,16 @@ int runCommandTableInBackground(bool appendOutput, bool redirectStdErr, bool std
 
 // ASSUMPTION: any command/multiple commands can have input files with <.
 // ^ the spec however, only shows one < at the end of the line?
-int runCommandTable(bool appendOutput, bool redirectStdErr, bool stdErrToStdOut, string errFileOutput){
-		// cout << "RUNNING " << commandTable.size() << " commands" << endl;
-	// fflush(stdout);
-	// printf("\x1B[A"); // move up one
-	// printf("\n"); // make new line
 
-	int pipes[commandTable.size()-1][2];
+int runCommandTable(vector<command> ct, bool appendOutput, bool redirectStdErr, bool stdErrToStdOut, string errFileOutput){
+		cout << "RUNNING " << ct.size() << " commands" << endl;
+		CUR_ESC_PATH = "";
+	fflush(stdout);
+	printf("\x1B[A"); // move up one
+	printf("\n"); // make new line
+
+
+	int pipes[ct.size()-1][2];
 
 	int saved_stdout = dup(STDOUT_FILENO);
 	int saved_stdin = dup(STDIN_FILENO);
@@ -495,11 +529,11 @@ int runCommandTable(bool appendOutput, bool redirectStdErr, bool stdErrToStdOut,
 			Output pipe for 2: [9,10]
 		]
 	*/
-	int validCommandCount = commandTable.size();
+	int validCommandCount = ct.size();
 	// 1st loop through command table
 	// initialize all pipes (just do pipe())
-	for(int i = 0; i < commandTable.size(); i++){
-		command cmd = commandTable[i];
+	for(int i = 0; i < ct.size(); i++){
+		command cmd = ct[i];
 		// cout << i << ": " << cmd.commandName << endl;
 
 		// for(int k = 0; k < cmd.args.size(); k++){
@@ -511,7 +545,7 @@ int runCommandTable(bool appendOutput, bool redirectStdErr, bool stdErrToStdOut,
 	
 	// 3rd loop - execute commands, deal with actual files here
 	for(int i = 0; i < validCommandCount; i++){
-		command cmd = commandTable[i];
+		command cmd = ct[i];
 		// cout << cmd.commandName << endl;
 
 		if(fork() == 0){
@@ -649,7 +683,7 @@ int runCommandTable(bool appendOutput, bool redirectStdErr, bool stdErrToStdOut,
 			}
 
 
-			// TODO need to restore stdin, out and err? it is also done in parent
+			
 			close(saved_stdout);
 			close(saved_stdin);
 			close(saved_stdin);
@@ -687,11 +721,14 @@ int runCommandTable(bool appendOutput, bool redirectStdErr, bool stdErrToStdOut,
 	}
 
 
-	// cout << "waiting  " << endl;
+	cout << "waiting  " << endl;
 	// TODO handle the & and background processing. do that here (at the command level, race conditions between commands?)? or at the table level?
 	int status;
 	for (int i = 0; i < validCommandCount; i++)
 		wait(&status);
+
+	cout << "waitin2g  " << endl;
+	fflush(stdout);
 
 	// put everything back. is this needed?
 	dup2(saved_stdout, STDOUT_FILENO);
@@ -705,7 +742,7 @@ int runCommandTable(bool appendOutput, bool redirectStdErr, bool stdErrToStdOut,
 	close(saved_stdin);
 	// reset commandTable here
 	// TODO this doesnt work? might only be when outputting to file?
-	commandTable.clear();
+	ct.clear();
 
 	return 0;
 }

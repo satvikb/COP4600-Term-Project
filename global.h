@@ -12,6 +12,7 @@
 #include <algorithm>
 #include "dirent.h"
 #include <fnmatch.h>
+#include<iterator>
 using namespace std;
 
 typedef map<string, string> TStrStrMap;
@@ -60,6 +61,7 @@ string completeString(string partial);
 extern map<string,string> envMap;
 extern map<string,string> aliasMap;
 extern map<string, string> systemUsers;
+extern string CUR_ESC_PATH;
 extern string CURRENT_DIR;
 extern struct vector<command> commandTable;
 
