@@ -21,6 +21,10 @@ int main()
     system("clear");
     while(1)
     {
+        fflush(stdout);
+        printf("\x1B[A"); // move up one
+        printf("\n"); // make new line
+        // printf("\b\b\b");
         printf("%s$ ", &envMap["PROMPT"][0]);
         yyparse();
     }
