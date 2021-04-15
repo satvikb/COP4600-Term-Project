@@ -10,6 +10,8 @@
 //#define unput(c) {yytchar= (c); if(yytchar=='\n') {yylineno--; *yysptr++=yytchar;}
 
 int enterCmd = 0;
+int enterString = 0;
+
 char* subAliases(char* name){
     auto sub = aliasMap.find(name);
     if(sub != aliasMap.end()){
@@ -79,7 +81,7 @@ bool ifCmd(char* arg){
 CHAR            [.A-Za-z0-9!\/_-][.A-Za-z0-9!\/_-]*
 CHAR_NO_SLASH   [.A-Za-z0-9!\_-][.A-Za-z0-9!\_-]*
 CMD_CHAR        [*?.A-Za-z0-9!\/_-][*?.A-Za-z0-9!\/_-]*
-ANYCHAR         [)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~ -][}{)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~ -]*
+ANYCHAR         [)(*&%#@!`;,\.a-zA-Z0-9'/*_=~ -][}{)(*&%#@!`;,\.a-zA-Z0-9'/*_=~ -]*
 
 %x string_condition
 %x cmd_condition
@@ -92,9 +94,10 @@ ANYCHAR         [)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~ -][}{)(*&%$#@!`;,\.a-zA-Z0-9'/*_=
                         cout << "ESC PRESSED " << endl;
                         return ESC;
                     }   
-<string_condition>{ANYCHAR}+     { yylval.string = strdup(yytext); return STRING;}
+<string_condition>{ANYCHAR}+    { yylval.string = strdup(yytext); return STRING;}
 
 <string_condition>[\"]          {
+                                    enterString = 0;
                                     if(enterCmd == 0)
                                         BEGIN(INITIAL);
                                     else 
@@ -176,28 +179,35 @@ ANYCHAR         [)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~ -][}{)(*&%$#@!`;,\.a-zA-Z0-9'/*_=
     }
  }
 
-<environment_condition>{CHAR}+[}]    {                                   
+<environment_condition>{CHAR}+[}]   {                                   
 
-                                        //printf("yytext: %s\n", yytext);
-                                        char * cpy = strdup(yytext);
-                                        cpy[strlen(cpy) - 1] = '\0';
-                                        //printf("yytext: %s\n", cpy);
-                                        auto sub = envMap.find(cpy);
-                                        //cout << sub->second << endl;
+    //printf("yytext: %s\n", yytext);
+    char * cpy = strdup(yytext);
+    cpy[strlen(cpy) - 1] = '\0';
+    //printf("yytext: %s\n", cpy);
+    auto sub = envMap.find(cpy);
+    //cout << sub->second << endl;
 
-                                        if(sub != envMap.end()){
-                                            for ( int i = sub->second.length() - 1; i >= 0; --i ) {
-                                                unput( sub->second[i] );
-                                            }
-                                        }
+    if(sub != envMap.end()){
+        for ( int i = sub->second.length() - 1; i >= 0; --i ) {
+            unput( sub->second[i] );
+        }
+    }
 
-                                        free(cpy);
-                                        if(enterCmd == 0) {
-                                            BEGIN(INITIAL);
-                                        } else {
-                                            BEGIN(cmd_condition);
-                                        }                
-                                    }
+    free(cpy);
+    if(enterString == 1) {
+        BEGIN(string_condition);
+    } else if(enterCmd == 0) {
+        BEGIN(INITIAL);
+    } else {
+        BEGIN(cmd_condition);
+    }                
+}
+<environment_condition>{CHAR}*      {
+    if(enterString == 1) {
+        BEGIN(string_condition);
+    }
+}
               
 [ \t\r]		            { }
 bye                 { return BYE; }
@@ -209,8 +219,8 @@ unsetenv            { enterCmd = 1; BEGIN(cmd_condition); return UNSETENV; }
 printenv            { enterCmd = 1; BEGIN(cmd_condition); yylval.string = strdup(yytext); return PRINTENV; }
 "\n"		        { return END; }
 "|"                 { return PIPE; }
-<INITIAL,cmd_condition>"${" { BEGIN(environment_condition); }
-<INITIAL,cmd_condition>[\"] { BEGIN(string_condition); }
+<INITIAL,cmd_condition,string_condition>"${" { BEGIN(environment_condition); }
+<INITIAL,cmd_condition>[\"] { enterString = 1; BEGIN(string_condition); }
 
 {CHAR}+             {
                         if(ifAlias(yytext)) {
