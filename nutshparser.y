@@ -507,12 +507,14 @@ int runCommandTableInBackground(vector<command> ct, bool appendOutput, bool redi
 
 // ASSUMPTION: any command/multiple commands can have input files with <.
 // ^ the spec however, only shows one < at the end of the line?
+
 int runCommandTable(vector<command> ct, bool appendOutput, bool redirectStdErr, bool stdErrToStdOut, string errFileOutput){
 		cout << "RUNNING " << ct.size() << " commands" << endl;
 		CUR_ESC_PATH = "";
 	fflush(stdout);
 	printf("\x1B[A"); // move up one
 	printf("\n"); // make new line
+
 
 	int pipes[ct.size()-1][2];
 
