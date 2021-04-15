@@ -727,7 +727,7 @@ int runCommandTable(vector<command> ct, bool appendOutput, bool redirectStdErr, 
 	for (int i = 0; i < validCommandCount; i++)
 		wait(&status);
 
-	cout << "waitin2g  " << endl;
+	cout << "waitin2g  " << getpid() << endl;
 	fflush(stdout);
 
 	// put everything back. is this needed?
