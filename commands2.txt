@@ -1,0 +1,25 @@
+alias a b
+alias c d
+alias
+unalias c
+alias b c
+alias c "echo test"
+cd ./testdir
+a
+unalias b
+alias
+pwd
+cd ..
+pwd
+cd /bin
+pwd
+cd ${HOME}
+pwd
+alias b a
+alias b c
+alias c a
+alias
+ali
+setenv e c
+unalias ${e}
+alias

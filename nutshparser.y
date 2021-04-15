@@ -17,11 +17,9 @@ chdir (path) - change working directory
 #define OUTPUT_END 0
 #define INPUT_END 1
 
-// #define INPUT(i) i*2
-#define OUTPUT(i) i //(i*2)+1
-
 int yylex(); 
 int yyerror(char *s);
+void errorMessage(string e);
 
 int runCD(string charArg);
 string removeParent(string path);
@@ -37,7 +35,6 @@ void unsetVariable(char* variable);
 
 int runCommandTable(bool appendOutput, bool redirectStdErr, bool stdErrToStdOut, string errFileOutput);
 int runCommandTableInBackground(bool appendOutput, bool redirectStdErr, bool stdErrToStdOut, string errFileOutput);
-void runExampleCommand();
 void printFileName(int fd);
 
 %}
@@ -53,12 +50,9 @@ void printFileName(int fd);
 
 %start cmd_line
 
-%token <string> BYE ESC EOFEND CD STRING ALIAS UNALIAS SETENV UNSETENV PRINTENV END CUSTOM_CMD EC PIPE IN OUT A_OUT ERROR_FILE ERROR_OUTPUT BACKGROUND
-// %token PIPE "|"
-// %token IN "<"
-// %token OUT ">"
-// %token A_OUT ">>"
-
+%token <string> BYE CD STRING ALIAS UNALIAS SETENV UNSETENV PRINTENV END CUSTOM_CMD ERROR_FILE ERROR_OUTPUT BACKGROUND
+// misc tokens
+%token <string> ESC EOFEND PIPE IN OUT A_OUT
 
 %nterm <string> redirectable_cmd
 %nterm <arguments> arg_list
@@ -195,6 +189,12 @@ int yyerror(char *s) {
   return 0;
 }
 
+void errorMessage(string e){
+	cout << endl << endl;
+	cout << e;
+	cout << endl << endl;
+}
+
 list* newArgList() {
 	list* l = new list();
 	return l;
@@ -229,7 +229,7 @@ int runCD(string charArg){
 		envMap["PWD"] = arg;
 		updateParentDirectories(arg);
 	} else {
-		printf("Directory not found\n");
+		printf("cd: Directory not found\n");
 		return 1;
 	}
 	
@@ -417,6 +417,7 @@ void printFileName(int fd){
 
 int runCommandTableInBackground(bool appendOutput, bool redirectStdErr, bool stdErrToStdOut, string errFileOutput){
 	if(fork() == 0){
+		cout << "RUNNING IN BG" << endl;
 		runCommandTable(appendOutput, redirectStdErr, stdErrToStdOut, errFileOutput);
 		exit(0);
 	}
@@ -436,24 +437,6 @@ int runCommandTable(bool appendOutput, bool redirectStdErr, bool stdErrToStdOut,
 	int saved_stdin = dup(STDIN_FILENO);
 	int saved_stderr = dup(STDERR_FILENO);
 
-	if(redirectStdErr){
-		if(stdErrToStdOut){
-			dup2(STDOUT_FILENO, STDERR_FILENO);
-		}else{
-			// output to file
-			int	flags = O_RDWR|O_CREAT|O_APPEND;
-			int out = open(&errFileOutput[0], flags, 0600);
-			if (-1 == out) { 
-				perror("error opening error output file"); 
-				return 255; 
-			}
-
-			dup2(out, STDERR_FILENO);
-			// TODO it works with and without this, keep?
-			fflush(stderr);
-			close(out);
-		}
-	}
 	/*
 		pipes = 
 		[
@@ -485,7 +468,10 @@ int runCommandTable(bool appendOutput, bool redirectStdErr, bool stdErrToStdOut,
 			// generate argv
 			dup2(saved_stdout, STDOUT_FILENO);
 			dup2(saved_stdin, STDIN_FILENO);
+			dup2(saved_stderr, STDERR_FILENO);
 
+
+			
 
 			char cmdNameC[cmd.commandName.length()+1];
 			strcpy(cmdNameC, cmd.commandName.c_str());
@@ -591,7 +577,30 @@ int runCommandTable(bool appendOutput, bool redirectStdErr, bool stdErrToStdOut,
 			// 	// close(pipes[i][OUTPUT_END]);
 			// 	close(pipes[i][INPUT_END]);
 			// }
+
+			if(redirectStdErr){
+				if(stdErrToStdOut){
+					dup2(STDOUT_FILENO, STDERR_FILENO);
+				}else{
+					// output to file
+					int	flags = O_RDWR|O_CREAT|O_APPEND;
+					int out = open(&errFileOutput[0], flags, 0600);
+					if (-1 == out) { 
+						perror("error opening error output file"); 
+						return 255; 
+					}
+
+					dup2(out, STDERR_FILENO);
+					// TODO it works with and without this, keep?
+					fflush(stderr);
+					close(out);
+				}
+			}
+
+
+			// TODO need to restore stdin, out and err? it is also done in parent
 			close(saved_stdout);
+			close(saved_stdin);
 			close(saved_stdin);
 			for(int k = 0; k < sizeof(pipes) / sizeof(pipes[0]); k++){
 				close(pipes[k][OUTPUT_END]);

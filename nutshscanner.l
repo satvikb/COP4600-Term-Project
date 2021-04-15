@@ -149,7 +149,7 @@ ANYCHAR         [)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~ -][}{)(*&%$#@!`;,\.a-zA-Z0-9'/*_=
 
 <INITIAL,cmd_condition>[~]{CHAR_NO_SLASH}*   { 
     if(strlen(yytext) == 1) {
-        string home = envMap["HOME"];
+        string home = getenv("HOME");
 
         for(int i = home.length() - 1; i >= 0; i--) {
             unput(home[i]);
@@ -162,11 +162,16 @@ ANYCHAR         [)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~ -][}{)(*&%$#@!`;,\.a-zA-Z0-9'/*_=
 
         if((pw = getpwnam(val)) == NULL) {
             // handle bad username
-            return END;
-        }
+            cout << "User not found. Defaulting to current user" << endl;
+            string home = envMap["HOME"];
 
-        for(int i = strlen(pw->pw_dir) - 1; i >= 0; i--) {
-            unput(pw->pw_dir[i]);
+            for(int i = home.length() - 1; i >= 0; i--) {
+                unput(home[i]);
+            }
+        }else{
+            for(int i = strlen(pw->pw_dir) - 1; i >= 0; i--) {
+                unput(pw->pw_dir[i]);
+            }
         }
     }
  }
