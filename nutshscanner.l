@@ -78,10 +78,10 @@ bool ifCmd(char* arg){
 %array
 %option noyywrap
 
-CHAR            [.A-Za-z0-9!\/_-][.A-Za-z0-9!\/_-]*
+CHAR            [.A-Za-z0-9!\/_:-][.A-Za-z0-9!\/_:-]*
 CHAR_NO_SLASH   [.A-Za-z0-9!\_-][.A-Za-z0-9!\_-]*
 CMD_CHAR        [*?.A-Za-z0-9!\/_-][*?.A-Za-z0-9!\/_-]*
-ANYCHAR         [)(*&%#@!`;,\.a-zA-Z0-9'/*_=~ -][}{)(*&%#@!`;,\.a-zA-Z0-9'/*_=~ -]*
+ANYCHAR         [:)(*&%#@!`;,\.a-zA-Z0-9'/*_=~ -][:}{)(*&%#@!`;,\.a-zA-Z0-9'/*_=~ -]*
 
 %x string_condition
 %x cmd_condition
@@ -104,7 +104,7 @@ ANYCHAR         [)(*&%#@!`;,\.a-zA-Z0-9'/*_=~ -][}{)(*&%#@!`;,\.a-zA-Z0-9'/*_=~ 
                                         BEGIN(cmd_condition);
                                 }
 
-<cmd_condition>{CMD_CHAR}+      {                                   
+<cmd_condition>{CHAR}+      {                                   
                                     if(strchr(yytext, '*') != NULL || strchr(yytext, '?') != NULL) {
                                         vector<string> matchedFiles;
 
@@ -149,6 +149,7 @@ ANYCHAR         [)(*&%#@!`;,\.a-zA-Z0-9'/*_=~ -][}{)(*&%#@!`;,\.a-zA-Z0-9'/*_=~ 
 <cmd_condition>">"              { return OUT; }
 <cmd_condition>"\n"		        { enterCmd = 0; BEGIN(INITIAL); return END; }
 <cmd_condition>"|"              { enterCmd = 0; BEGIN(INITIAL); return PIPE; }
+<cmd_condition>" "              { }
 
 <INITIAL,cmd_condition>[~]{CHAR_NO_SLASH}*   { 
     if(strlen(yytext) == 1) {
