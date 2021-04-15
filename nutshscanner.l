@@ -77,6 +77,7 @@ bool ifCmd(char* arg){
 %option noyywrap
 
 CHAR            [.A-Za-z0-9!\/_-][.A-Za-z0-9!\/_-]*
+CHAR_NO_SLASH   [.A-Za-z0-9!\_-][.A-Za-z0-9!\_-]*
 CMD_CHAR        [*?.A-Za-z0-9!\/_-][*?.A-Za-z0-9!\/_-]*
 ANYCHAR         [)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~ -][}{)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~ -]*
 
@@ -141,6 +142,30 @@ ANYCHAR         [)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~ -][}{)(*&%$#@!`;,\.a-zA-Z0-9'/*_=
 <cmd_condition>">"              { return OUT; }
 <cmd_condition>"\n"		        { enterCmd = 0; BEGIN(INITIAL); return END; }
 <cmd_condition>"|"              { enterCmd = 0; BEGIN(INITIAL); return PIPE; }
+
+<INITIAL,cmd_condition>[~]{CHAR_NO_SLASH}*   { 
+    if(strlen(yytext) == 1) {
+        string home = envMap["HOME"];
+
+        for(int i = home.length() - 1; i >= 0; i--) {
+            unput(home[i]);
+        }
+    } else {
+        char * val = strdup(yytext);
+        val++;
+
+        struct passwd* pw;
+
+        if((pw = getpwnam(val)) == NULL) {
+            // handle bad username
+            return END;
+        }
+
+        for(int i = strlen(pw->pw_dir) - 1; i >= 0; i--) {
+            unput(pw->pw_dir[i]);
+        }
+    }
+ }
 
 <environment_condition>{CHAR}+[}]    {                                   
 
