@@ -431,9 +431,9 @@ int runCommandTableInBackground(bool appendOutput, bool redirectStdErr, bool std
 // ^ the spec however, only shows one < at the end of the line?
 int runCommandTable(bool appendOutput, bool redirectStdErr, bool stdErrToStdOut, string errFileOutput){
 		// cout << "RUNNING " << commandTable.size() << " commands" << endl;
-	fflush(stdout);
-	printf("\x1B[A"); // move up one
-	printf("\n"); // make new line
+	// fflush(stdout);
+	// printf("\x1B[A"); // move up one
+	// printf("\n"); // make new line
 
 	int pipes[commandTable.size()-1][2];
 

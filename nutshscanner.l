@@ -206,6 +206,10 @@ ANYCHAR         [)(*&%#@!`;,\.a-zA-Z0-9'/*_=~ -][}{)(*&%#@!`;,\.a-zA-Z0-9'/*_=~ 
 <environment_condition>{CHAR}*      {
     if(enterString == 1) {
         BEGIN(string_condition);
+    } else if(enterCmd == 1) {
+        BEGIN(cmd_condition);
+    } else {
+        BEGIN(INITIAL);
     }
 }
               
