@@ -170,6 +170,7 @@ ANYCHAR         [:)(*&%#@!`;,\.a-zA-Z0-9'/*_=~ -][:}{)(*&%#@!`;,\.a-zA-Z0-9'/*_=
 <cmd_condition>"\n"		        { enterCmd = 0; BEGIN(INITIAL); return END; }
 <cmd_condition>"|"              { enterCmd = 0; BEGIN(INITIAL); return PIPE; }
 <cmd_condition>" "              { }
+<cmd_condition>"\x1b"           { }
 
 <INITIAL,cmd_condition>[~]{CHAR_NO_SLASH}*   { 
     if(strlen(yytext) == 1) {
@@ -251,7 +252,7 @@ printenv            { enterCmd = 1; BEGIN(cmd_condition); yylval.string = strdup
 
 {CHAR}+             {
                         if(ifAlias(yytext)) {
-                            printf("yytext before sub: %s\n", yytext);
+                            // printf("yytext before sub: %s\n", yytext);
                             // source: https://www.cs.princeton.edu/~appel/modern/c/software/flex/flex.html
                             char *yycopy = strdup( subAliases(yytext) );
                             for ( int i = strlen(subAliases(yytext)) - 1; i >= 0; --i )

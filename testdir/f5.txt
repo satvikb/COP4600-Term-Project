@@ -1,0 +1,4 @@
+HOME=/home/satvik
+PATH=.:/bin:/usr/bin
+PROMPT=satvik:testdir
+PWD=/mnt/c/Users/Satvik/Documents/College/Spring 2021/COP/Nutshell/COP4600-Term-Project/testdir
