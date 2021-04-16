@@ -517,9 +517,9 @@ int runCommandTableInBackground(vector<command> ct, bool appendOutput, bool redi
 
 int runCommandTable(vector<command> ct, bool appendOutput, bool redirectStdErr, bool stdErrToStdOut, string errFileOutput){
 	CUR_ESC_PATH = "";
-	fflush(stdout);
-	printf("\x1B[A"); // move up one
-	printf("\n"); // make new line
+	// fflush(stdout);
+	// printf("\x1B[A"); // move up one
+	// printf("\n"); // make new line
 
 
 	int pipes[ct.size()-1][2];
@@ -632,14 +632,15 @@ int runCommandTable(vector<command> ct, bool appendOutput, bool redirectStdErr, 
 				// // stdin becomes output of previous pipe
 				// dup2(pipes[i-1][OUTPUT_END], STDIN_FILENO);
 			}
+			bool writingStdErrToFileOutputFile = false;
 			if(lastCommand && !cmd.outputFileName.empty()){
 				// write to file https://stackoverflow.com/questions/8516823/redirecting-output-to-a-file-in-c
-				// cout << "OUTPUT FILE" << endl;
+				// cout << "OUTPUT FILE" << appendOutput << endl;
 				int flags;
 				if(appendOutput){
 					flags = O_RDWR|O_CREAT|O_APPEND;
 				}else{
-					flags = O_RDWR|O_CREAT;
+					flags = O_RDWR|O_CREAT|O_TRUNC;
 				}
 				int out = open(&cmd.outputFileName[0], flags, 0600);
 				if (-1 == out) { 
@@ -647,6 +648,12 @@ int runCommandTable(vector<command> ct, bool appendOutput, bool redirectStdErr, 
 					return 255; 
 				}
 
+				if(redirectStdErr){
+					if(stdErrToStdOut){
+						writingStdErrToFileOutputFile = true;
+						dup2(out, STDERR_FILENO);
+					}
+				}
 				dup2(out, STDOUT_FILENO);
 				// TODO it works with and without this, keep?
 				fflush(stdout);
@@ -670,11 +677,11 @@ int runCommandTable(vector<command> ct, bool appendOutput, bool redirectStdErr, 
 			// }
 
 			if(redirectStdErr){
-				if(stdErrToStdOut){
+				if(stdErrToStdOut && !writingStdErrToFileOutputFile){
 					dup2(STDOUT_FILENO, STDERR_FILENO);
 				}else{
 					// output to file
-					int	flags = O_RDWR|O_CREAT|O_APPEND;
+					int	flags = O_RDWR|O_CREAT|O_TRUNC;
 					int out = open(&errFileOutput[0], flags, 0600);
 					if (-1 == out) { 
 						perror("error opening error output file"); 
