@@ -80,7 +80,7 @@ bool ifCmd(char* arg){
 
 CHAR            [.“”A-Za-z0-9!\/_:'-][.“”A-Za-z0-9!\/_:'-]*
 CHAR_NO_SLASH   [.“”A-Za-z0-9!\_-][.“”A-Za-z0-9!\_-]*
-CMD_CHAR        [*?“”.A-Za-z0-9!\/_':-][*?“”.A-Za-z0-9!\/_':-]*
+CMD_CHAR        [\[\]*?;“”.A-Za-z0-9!\/_':-][\[\]*?;“”.A-Za-z0-9!\/_':-]*
 ANYCHAR         [:)“”(*&%#@!`;,\.a-zA-Z0-9'/*_=~ -][:}“”{)(*&%#@!`;,\.a-zA-Z0-9'/*_=~ -]*
 
 %x string_condition
