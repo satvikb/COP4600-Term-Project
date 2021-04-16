@@ -27,7 +27,7 @@ string removeParent(string path);
 string getFolderOfFile(string path);
 string getFileOfFolder(string path);
 
-bool checkIfWordEndsAtName(char *name, char *word);
+bool checkIfWordEndsAtName(string name, string word);
 int runSetAlias(char *name, char *word);
 int runPrintAlias();
 void unsetAlias(char* name);
@@ -375,23 +375,21 @@ alias three one
 
 */
 // recursive
-bool checkIfWordEndsAtName(char *name, char *word){
-	map<string, string>::iterator it;
-	for(it = aliasMap.begin(); it != aliasMap.end(); ++it){
-		if(it->first == word){
-			if(it->second == name){
-				// cycle, invalid
-				return true;
-			}
-			return checkIfWordEndsAtName(&it->second[0], name); // check if two ends at three
+bool checkIfWordEndsAtName(string name, string word){
+	string val = word;
+	while(aliasMap.find(val) != aliasMap.end()){
+		if(aliasMap[val] == name){
+			return true;
 		}
+
+		val = aliasMap[val];
 	}
+
 	return false;
 }
 
 // the alias is name, = word. word "shortened" to name / alias
 int runSetAlias(char *name, char *word) {
-	printf("Setting alias name \"%s\".\n", name);
 	// test if name and word is the same
 	if(strcmp(name, word) == 0){
 		printf("Error, expansion of \"%s\" would create a loop.\n", name);
@@ -410,13 +408,14 @@ int runSetAlias(char *name, char *word) {
 			aliasMap[it->first] = word;
 			return 1;
 		}else if(checkIfWordEndsAtName(name, word) == true){
-			printf("Cycle.");
+			printf("Error, expansion of \"%s\" would create a loop.\n", name);
 			return 1;
 		}
 	}
 
 	// new alias
 	aliasMap[name] = word;
+	printf("Setting alias name \"%s\".\n", name);
 	return 1;
 }
 
@@ -604,13 +603,15 @@ int runCommandTable(vector<command> ct, bool appendOutput, bool redirectStdErr, 
 				// cout << "middle " << cmd.commandName << endl;
 				// input is output end pipe from previous command
 				if(dup2(pipes[i-1][OUTPUT_END], STDIN_FILENO) < 0){
-					cout << "ERROR" << endl;
+					cout << "Could not create input pipe! For command: " << cmd.commandName;
+					return 255;
 				}
 				close(pipes[i-1][OUTPUT_END]);
 				// output is write end of this pipe
 				if(dup2(pipes[i][INPUT_END], STDOUT_FILENO) < 0){
 					// perror("Err ");
-					cout << "ERROR2" << endl;
+					cout << "Could not create output pipe! For command: " << cmd.commandName;
+					return 255;
 				}
 				close(pipes[i][INPUT_END]);
 
