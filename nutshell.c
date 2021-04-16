@@ -6,6 +6,8 @@
 #include "global.h"
 #include <unistd.h>
 #include <limits.h>
+// #include <chrono>
+// #include <thread>
 extern int yyparse (void);
 
 char* getcwd(char *buf, size_t size);
@@ -22,6 +24,8 @@ int main()
     getSystemUsers();
     while(1)
     {
+        // std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        // cout << "[MAIN]  " << getpid() << ": ";
         printf("%s$ ", &envMap["PROMPT"][0]);
         yyparse();
     }

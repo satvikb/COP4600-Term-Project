@@ -76,9 +76,9 @@ bool ifCmd(char* arg){
 %array
 %option noyywrap
 
-CHAR            [.A-Za-z0-9!\/_:-][.A-Za-z0-9!\/_:-]*
+CHAR            [.A-Za-z0-9!\/_:'-][.A-Za-z0-9!\/_:'-]*
 CHAR_NO_SLASH   [.A-Za-z0-9!\_-][.A-Za-z0-9!\_-]*
-CMD_CHAR        [*?.A-Za-z0-9!\/_-][*?.A-Za-z0-9!\/_-]*
+CMD_CHAR        [*?.A-Za-z0-9!\/_':-][*?.A-Za-z0-9!\/_':-]*
 ANYCHAR         [:)(*&%#@!`;,\.a-zA-Z0-9'/*_=~ -][:}{)(*&%#@!`;,\.a-zA-Z0-9'/*_=~ -]*
 
 %x string_condition
@@ -93,10 +93,10 @@ ANYCHAR         [:)(*&%#@!`;,\.a-zA-Z0-9'/*_=~ -][:}{)(*&%#@!`;,\.a-zA-Z0-9'/*_=
                                                             // cout << "ESC ON: " << yytext << endl;
                                                         yytext[strlen(yytext)-1]='\0'; // remove escape key from input
                                                         fflush(stdout);
-                                                        cout << "COMPLETE ON: " << yytext << endl;
+                                                        // cout << "COMPLETE ON: " << yytext << endl;
                                                         string completed = completeString(yytext);
                                                         completed = '\"' + completed + '\"';
-                                                        cout << yytext << "ESC COMP " << completed << endl;
+                                                        // cout << yytext << "ESC COMP " << completed << endl;
                                                         char *yycopy = strdup( &completed[0] );
                                                         for ( int i = strlen(&completed[0]) - 1; i >= 0; --i )
                                                             unput( yycopy[i] );
@@ -113,7 +113,7 @@ ANYCHAR         [:)(*&%#@!`;,\.a-zA-Z0-9'/*_=~ -][:}{)(*&%#@!`;,\.a-zA-Z0-9'/*_=
                                         BEGIN(cmd_condition);
                                 }
 
-<cmd_condition>{CHAR}+      {                                   
+<cmd_condition>{CMD_CHAR}+      {                                   
                                     if(strchr(yytext, '*') != NULL || strchr(yytext, '?') != NULL) {
                                         vector<string> matchedFiles;
 

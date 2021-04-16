@@ -225,7 +225,7 @@ pipedCmds* appendToCmdList(pipedCmds* p, char* name, list* args) {
 int runCD(string charArg){
 	CUR_ESC_PATH = "";
 	string arg = expandDirectory(charArg);
-	cout << "CD" << arg << endl;
+	// cout << "CD" << arg << endl;
 	if(chdir(arg.c_str()) == 0){ // change dir
 		envMap["PWD"] = arg;
 		updateParentDirectories(arg);
@@ -274,7 +274,7 @@ string completeString(string partial){
 	if(partial[0] == '~'){
 		auto i = FindPrefix(systemUsers, partial.substr(1));
 		if (i != systemUsers.end()){
-			cout << 'Found: \t' << i->first << ", " << i->second;
+			// cout << 'Found: \t' << i->first << ", " << i->second;
 			return i->second;
 		}
 	}else{
@@ -287,23 +287,23 @@ string completeString(string partial){
 		string dirStr = getFolderOfFile(fullPath);
 		string fileName = getFileOfFolder(fullPath); // do it this way to take into account ../../fil	(esc)
 		string matchString = strcat(&fileName[0], "*");
-		cout << "Completing String " << partial.size() << "___" << dirStr << "____" << fileName << "____" << fullPath << endl;
+		// cout << "Completing String " << partial.size() << "___" << dirStr << "____" << fileName << "____" << fullPath << endl;
 
  		DIR* d;
 		struct dirent *dir;
 		d = opendir(dirStr.c_str());
-		cout << "seg test" << d << " " << dirStr << endl;
+		// cout << "seg test" << d << " " << dirStr << endl;
 		while((dir = readdir(d)) != NULL) {
-					cout << "seg test2" << endl;
+			// cout << "seg test2" << endl;
 
 			if(fnmatch(&matchString[0], dir->d_name, 0) == 0) {
-						cout << "seg test3" << endl;
+				// cout << "seg test3" << endl;
 
 				string matched(dir->d_name);
 				closedir(d);
 				// cout << "Found " << dirStr << "_Match: " << matched << endl;
 				string fullMatched = dirStr+"/"+matched;
-				cout << "Found2 " << fullMatched << "_Match: " << matched << endl;
+				// cout << "Found2 " << fullMatched << "_Match: " << matched << endl;
 				CUR_ESC_PATH = fullMatched;
 				return fullMatched; // return this if yyput replaces everything before until space (need the whole path)
 				// return matched; // return this if yyput only replaces the file name (not including / and ..)
@@ -490,13 +490,20 @@ int runCommandTableInBackground(vector<command> ct, bool appendOutput, bool redi
 	if(childPid == 0){
 		    // Copying vector by copy function
 
+		// int fd = open("/dev/null", O_WRONLY);
+		// dup2(fd, 0);
+		// dup2(fd, 1);
+		// dup2(fd, 2);
 		// cout << "RUNNING IN BG" << endl;
 		runCommandTable(ctCopy, appendOutput, redirectStdErr, stdErrToStdOut, errFileOutput);
-		cout << "RUNNING IN BG DONE" << endl;
+// int fd = open("/dev/null", O_WRONLY);
+		// dup2(fd, 0);
+		// dup2(fd, 1);
+		// dup2(fd, 2);
 		fflush(stdout);
 		exit(0);
 	}else{
-		cout << "[Background PID]=" << childPid << endl;
+		// cout << "[Background PID]=" << childPid << endl;
 		ct.clear();
 	}
 	return 0;
@@ -509,8 +516,7 @@ int runCommandTableInBackground(vector<command> ct, bool appendOutput, bool redi
 // ^ the spec however, only shows one < at the end of the line?
 
 int runCommandTable(vector<command> ct, bool appendOutput, bool redirectStdErr, bool stdErrToStdOut, string errFileOutput){
-		cout << "RUNNING " << ct.size() << " commands" << endl;
-		CUR_ESC_PATH = "";
+	CUR_ESC_PATH = "";
 	fflush(stdout);
 	printf("\x1B[A"); // move up one
 	printf("\n"); // make new line
@@ -721,13 +727,13 @@ int runCommandTable(vector<command> ct, bool appendOutput, bool redirectStdErr, 
 	}
 
 
-	cout << "waiting  " << endl;
+	// cout << "waiting  " << endl;
 	// TODO handle the & and background processing. do that here (at the command level, race conditions between commands?)? or at the table level?
 	int status;
 	for (int i = 0; i < validCommandCount; i++)
 		wait(&status);
 
-	cout << "waitin2g  " << endl;
+	// cout << "waitin2g  " << getpid() << endl;
 	fflush(stdout);
 
 	// put everything back. is this needed?
