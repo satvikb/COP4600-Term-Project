@@ -1,4 +1,4 @@
-We used the given nutshell as a starting base.
+We used the given micro shell as a starting base.
 
 Satvik Borra contributions:
 
@@ -13,13 +13,16 @@ For non built in commands, I handled piping and I/O redirection input, and deter
 I worked on environmental variable expansion and wildcard matching.
 I worked on the tilde expansion extra credit. 
 
-What is not implemented:
-Handling input from a file if the file does not end with a newline.
-Handling of non characters such as arrows.
+For the most part, every feature has been implemented, however the following bugs still persist in our shell:
+- When an unknown command is read from an input file, a segmentation fault error occurs. This does not happen when the shell is interacted with naturally. (i.e. ./nutshell < commands.txt)
+- When a file is inputted to the nutshell program and the file does end with a newline, the shell hangs. (i.e. ./nutshell < commands.txt)
+- When a process is run in the background, subsequent prompts are printed in an unexpected order.
+- Changing an environment variable that's pointed to by an existing environment variable does not update the value of that existing environment vairable.
+- When the output of the nutshell is redirected to a file, some unknown 
 
 What is implemented:
 Built in commands.
-Other commands: finding them, piping them, redirecting them.
+Other commands: finding them, piping them, redirecting them and their error.
 Environmental variable expansion and wildcard matching.
 Tilde expansion.
 Auto completion with the escape key.
