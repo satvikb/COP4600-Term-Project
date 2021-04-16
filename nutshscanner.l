@@ -10,6 +10,8 @@
 int enterCmd = 0;
 int enterString = 0;
 
+string stringBuffer = "";
+
 char* subAliases(char* name){
     auto sub = aliasMap.find(name);
     if(sub != aliasMap.end()){
@@ -89,7 +91,7 @@ ANYCHAR         [:)(*&%#@!`;,\.a-zA-Z0-9'/*_=~ -][:}{)(*&%#@!`;,\.a-zA-Z0-9'/*_=
 
 <<EOF>>             { return EOFEND; }
 
-<INITIAL,cmd_condition,string_condition>[~]?{CHAR}+"\x1b"            { 
+<INITIAL,cmd_condition>[~]?{CHAR}+"\x1b"            { 
                                                             // cout << "ESC ON: " << yytext << endl;
                                                         yytext[strlen(yytext)-1]='\0'; // remove escape key from input
                                                         fflush(stdout);
@@ -102,7 +104,11 @@ ANYCHAR         [:)(*&%#@!`;,\.a-zA-Z0-9'/*_=~ -][:}{)(*&%#@!`;,\.a-zA-Z0-9'/*_=
                                                             unput( yycopy[i] );
                                                         free( yycopy );
                                                     } 
-<string_condition>{ANYCHAR}+     { yylval.string = strdup(yytext); return STRING;}
+<string_condition>{ANYCHAR}+     { 
+    //yylval.string = strdup(yytext); return STRING;
+        string str(yytext);
+        stringBuffer = stringBuffer + str;
+    }
 
 
 <string_condition>[\"]          {
@@ -111,6 +117,11 @@ ANYCHAR         [:)(*&%#@!`;,\.a-zA-Z0-9'/*_=~ -][:}{)(*&%#@!`;,\.a-zA-Z0-9'/*_=
                                         BEGIN(INITIAL);
                                     else 
                                         BEGIN(cmd_condition);
+                                    char* val;
+                                    val = strdup(stringBuffer.c_str());
+                                    yylval.string = val;
+                                    stringBuffer = "";
+                                    return STRING;
                                 }
 
 <cmd_condition>{CMD_CHAR}+      {                                   
@@ -181,7 +192,7 @@ ANYCHAR         [:)(*&%#@!`;,\.a-zA-Z0-9'/*_=~ -][:}{)(*&%#@!`;,\.a-zA-Z0-9'/*_=
             for(int i = home.length() - 1; i >= 0; i--) {
                 unput(home[i]);
             }
-        }else{
+        } else{
             for(int i = strlen(pw->pw_dir) - 1; i >= 0; i--) {
                 unput(pw->pw_dir[i]);
             }
@@ -210,6 +221,7 @@ ANYCHAR         [:)(*&%#@!`;,\.a-zA-Z0-9'/*_=~ -][:}{)(*&%#@!`;,\.a-zA-Z0-9'/*_=
     } else if(enterCmd == 0) {
         BEGIN(INITIAL);
     } else {
+        cout << "LOL" <<endl;
         BEGIN(cmd_condition);
     }                
 }
