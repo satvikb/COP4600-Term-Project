@@ -111,7 +111,7 @@ ANYCHAR         [:)(*&%#@!`;,\.a-zA-Z0-9'/*_=~ -][:}{)(*&%#@!`;,\.a-zA-Z0-9'/*_=
     }
 
 
-<string_condition>[\"]          {
+<string_condition>[\"]|[”]      {
                                     enterString = 0;
                                     if(enterCmd == 0)
                                         BEGIN(INITIAL);
@@ -248,7 +248,7 @@ printenv            { enterCmd = 1; BEGIN(cmd_condition); yylval.string = strdup
 "|"                 { return PIPE; }
 
 <INITIAL,cmd_condition,string_condition>"${" { BEGIN(environment_condition); }
-<INITIAL,cmd_condition>[\"] { enterString = 1; BEGIN(string_condition); }
+<INITIAL,cmd_condition>[\"]|[“]  { enterString = 1; BEGIN(string_condition); }
 
 {CHAR}+             {
                         if(ifAlias(yytext)) {
