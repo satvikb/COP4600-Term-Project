@@ -29,7 +29,6 @@ unsetenv HOME
 printenv
 alias z z
 ls
-./testdir/test.o
 echo "CURRENT PATH IS ${PATH}"
 ls testdir
 echo "${e}"

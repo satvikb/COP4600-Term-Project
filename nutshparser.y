@@ -78,7 +78,7 @@ cmd_line    	:
 	| ALIAS STRING STRING END											{runSetAlias($2, $3); return 1;}
 	//| ALIAS END														{runPrintAlias(); return 1;}
 	| UNALIAS STRING END												{unsetAlias($2); return 1;}
-	| redirectable_cmd arg_list piped_cmd_list input_file output_file error_output background END	{																		
+	| redirectable_cmd arg_list piped_cmd_list input_file output_file error_output background END	{	
 		string errorOutputFile = "";
 		bool appendOutput = false;
 		bool redirectStdError = false;
@@ -154,7 +154,7 @@ cmd_line    	:
 		}
 		return 1;
 	}
-	| error	END						{cout << endl << endl << "The following command was not found: " << $2 << endl << "Please check your spelling." << endl << endl; return 1;}
+	| error	END						{cout << endl << endl << "The command was not found. " << endl << "Please check your spelling." << endl << endl; return 1;}
 
 redirectable_cmd	:
 	CUSTOM_CMD						{strcpy($$, $1);}
@@ -189,8 +189,8 @@ background   :
 %%
 
 int yyerror(char *s) {
-//   printf("The command was not found\n");
-  return 0;
+  printf("The command was not found\n");
+  return 1;
 }
 
 void errorMessage(string e){
@@ -519,7 +519,6 @@ int runCommandTable(vector<command> ct, bool appendOutput, bool redirectStdErr, 
 	// fflush(stdout);
 	// printf("\x1B[A"); // move up one
 	// printf("\n"); // make new line
-
 
 	int pipes[ct.size()-1][2];
 

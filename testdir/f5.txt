@@ -1,4 +1,12 @@
-HOME=/home/satvik
-PATH=.:/bin:/usr/bin
+satvik:testdir$ HOME=/home/satvik
+PATH=.:/usr/bin:/usr/local/bin:./testdir
 PROMPT=satvik:testdir
 PWD=/mnt/c/Users/Satvik/Documents/College/Spring 2021/COP/Nutshell/COP4600-Term-Project/testdir
+e=c
+lsthis=jj .
+this=.
+satvik:testdir$ a=b
+b=c
+jj=ls -al
+lo=jj
+rot13=tr a-zA-Z n-za-mN-ZA-M

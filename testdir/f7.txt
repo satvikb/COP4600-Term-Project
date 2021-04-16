@@ -1,2 +1,5 @@
-satvik:testdir$ txt.7f 65:12 51 rpA 71   kivtas kivtas 1 xwrxwrxwr-
-txt.3f 65:12 51 rpA 05   kivtas kivtas 1 xwrxwrxwr-
+satvik:testdir$ txt.6f 72:32 51 rpA 91   kivtas kivtas 1 xwrxwrxwr-
+txt.2f 72:32 51 rpA 83   kivtas kivtas 1 xwrxwrxwr-
+txt.1f 72:32 51 rpA 65   kivtas kivtas 1 xwrxwrxwr-
+txt.3f 72:32 51 rpA 772  kivtas kivtas 1 xwrxwrxwr-
+txt.5f 72:32 51 rpA 782  kivtas kivtas 1 xwrxwrxwr-
