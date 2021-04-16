@@ -222,7 +222,6 @@ ANYCHAR         [:)“”(*&%#@!`;,\.a-zA-Z0-9'/*_=~ -][:}“”{)(*&%#@!`;,\.a-
     } else if(enterCmd == 0) {
         BEGIN(INITIAL);
     } else {
-        cout << "LOL" <<endl;
         BEGIN(cmd_condition);
     }                
 }

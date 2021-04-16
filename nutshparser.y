@@ -189,7 +189,7 @@ background   :
 %%
 
 int yyerror(char *s) {
-  printf("The command was not found\n");
+//   printf("The command was not found\n");
   return 1;
 }
 
