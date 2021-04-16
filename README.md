@@ -18,7 +18,8 @@ For the most part, every feature has been implemented, however the following bug
 - When a file is inputted to the nutshell program and the file does not end with a newline, the shell hangs. (i.e. ./nutshell < commands.txt)
 - When a process is run in the background, subsequent prompts are printed in an unexpected order.
 - Changing an environment variable that's pointed to by an existing environment variable does not update the value of that existing environment vairable.
-- When the output of the nutshell is redirected to a file, some unknown characters are printed instead of the actual characters
+- When the output of the nutshell is redirected to a file, some unknown characters are printed instead of the actual characters.
+  In addition, some unexpected characters ([H[2J[3J) are printed at the beginning.
 - When the output of the nutshell is redirected to a file, the output of some commands are intertwined.
 
 What is implemented (Every command works as long as it is run in the shell directly and not through input/output redirection):
