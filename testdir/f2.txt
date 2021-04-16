@@ -1,3 +1,0 @@
-satvik:testdir$ apple
-carrot
-banana
